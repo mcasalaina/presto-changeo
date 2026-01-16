@@ -2,11 +2,14 @@
 Presto-Change-O Backend
 FastAPI application with WebSocket endpoint for real-time communication.
 """
+import json
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+
+from chat import handle_chat_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,8 +54,12 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for real-time communication.
 
-    Currently echoes received messages back for connection testing.
-    Will be extended for chat and voice in later phases.
+    Routes messages by type:
+    - "chat": Routes to LLM chat handler for streaming response
+    - Other types: Echo back for debugging
+
+    Message format expected:
+    {"type": "chat", "payload": {"text": "user message"}}
     """
     await websocket.accept()
     logger.info("WebSocket connection established")
@@ -63,8 +70,32 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             logger.info(f"Received message: {data[:100]}...")
 
-            # Echo message back (for connection testing)
-            await websocket.send_text(f"Echo: {data}")
+            try:
+                # Parse JSON message
+                message = json.loads(data)
+                message_type = message.get("type")
+
+                if message_type == "chat":
+                    # Route to chat handler
+                    text = message.get("payload", {}).get("text", "")
+                    if text:
+                        await handle_chat_message(text, websocket)
+                    else:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "payload": {"error": "Chat message text is required"}
+                        }))
+                else:
+                    # Echo for unknown types (debugging)
+                    await websocket.send_text(f"Echo: {data}")
+
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid JSON received: {e}")
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "payload": {"error": f"Invalid JSON: {str(e)}"}
+                }))
+
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed")
     except Exception as e:
