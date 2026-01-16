@@ -82,34 +82,34 @@ Which phases cover which requirements. Updated by create-roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHAT-01 | TBD | Pending |
-| CHAT-02 | TBD | Pending |
-| CHAT-03 | TBD | Pending |
-| CHAT-04 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| MODE-01 | TBD | Pending |
-| MODE-02 | TBD | Pending |
-| MODE-03 | TBD | Pending |
-| MODE-04 | TBD | Pending |
-| PERS-01 | TBD | Pending |
-| PERS-02 | TBD | Pending |
-| VOIC-01 | TBD | Pending |
-| VOIC-02 | TBD | Pending |
-| VOIC-03 | TBD | Pending |
-| VOIC-04 | TBD | Pending |
-| PERF-01 | TBD | Pending |
-| PERF-02 | TBD | Pending |
-| PERF-03 | TBD | Pending |
-| PERF-04 | TBD | Pending |
+| CHAT-01 | Phase 2 | Pending |
+| CHAT-02 | Phase 2 | Pending |
+| CHAT-03 | Phase 2 | Pending |
+| CHAT-04 | Phase 2 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| DASH-03 | Phase 3 | Pending |
+| DASH-04 | Phase 3 | Pending |
+| MODE-01 | Phase 4 | Pending |
+| MODE-02 | Phase 4 | Pending |
+| MODE-03 | Phase 4 | Pending |
+| MODE-04 | Phase 7 | Pending |
+| PERS-01 | Phase 5 | Pending |
+| PERS-02 | Phase 5 | Pending |
+| VOIC-01 | Phase 6 | Pending |
+| VOIC-02 | Phase 6 | Pending |
+| VOIC-03 | Phase 6 | Pending |
+| VOIC-04 | Phase 6 | Pending |
+| PERF-01 | Phase 8 | Pending |
+| PERF-02 | Phase 8 | Pending |
+| PERF-03 | Phase 8 | Pending |
+| PERF-04 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0 (pending create-roadmap)
-- Unmapped: 22 ⚠️
+- Mapped to phases: 22
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-01-15*
-*Last updated: 2026-01-15 after initial definition*
+*Last updated: 2026-01-15 after roadmap creation*
