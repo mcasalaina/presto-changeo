@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-15)
 
 **Core value:** Dynamic industry simulation that feels real. The interface must convincingly transform into any industry on command, with the AI providing contextually appropriate responses and visualizations.
-**Current focus:** Phase 1 - Foundation
+**Current focus:** Phase 2 - Chat Interface
 
 ## Current Position
 
-Phase: 1 of 8 (Foundation)
-Plan: 2 of 3 complete in phase
+Phase: 2 of 8 (Chat Interface)
+Plan: 1 of 2 complete in phase
 Status: In progress
-Last activity: 2026-01-15 - Completed 01-01-PLAN.md (Frontend Foundation)
+Last activity: 2026-01-16 - Completed 02-01-PLAN.md (Backend Chat Handler)
 
-Progress: [##--------] ~20%
+Progress: [######----] ~60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~4 minutes
-- Total execution time: ~8 minutes
+- Total plans completed: 3
+- Average duration: ~3 minutes
+- Total execution time: ~10 minutes
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation | 2/3 | ~8 min | ~4 min |
+| 2. Chat Interface | 1/2 | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3m 25s), 01-01 (~5 min)
-- Trend: Consistent
+- Last 5 plans: 02-01 (2m 15s), 01-02 (3m 25s), 01-01 (~5 min)
+- Trend: Improving
 
 ## Accumulated Context
 
@@ -47,6 +48,9 @@ Recent decisions affecting current work:
 | 01-02 | Lazy credential initialization | No auth on import, only when needed |
 | 01-02 | Cache credential globally | Single browser popup per session |
 | 01-02 | CORS for localhost:5173 | Standard Vite dev port |
+| 02-01 | JSON message protocol with type/payload | Consistent, extensible format for all message types |
+| 02-01 | chat_start before streaming | Frontend can show typing indicator immediately |
+| 02-01 | Separate chat_error type | Clean error handling without mixing with content |
 
 ### Pending Todos
 
@@ -58,9 +62,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-15
-Stopped at: Completed 01-01-PLAN.md (Frontend Foundation)
-Resume file: .planning/phases/01-foundation/01-03-PLAN.md
+Last session: 2026-01-16
+Stopped at: Completed 02-01-PLAN.md (Backend Chat Handler)
+Resume file: .planning/phases/02-chat-interface/02-02-PLAN.md
 
 ## Completed Plans
 
@@ -68,3 +72,4 @@ Resume file: .planning/phases/01-foundation/01-03-PLAN.md
 |------|---------|------|
 | 01-01 | Vite React TypeScript shell with WebSocket client | 2026-01-15 |
 | 01-02 | Python backend with FastAPI, WebSocket, and Azure auth | 2026-01-16 |
+| 02-01 | Chat handler with Azure LLM streaming via WebSocket | 2026-01-16 |
