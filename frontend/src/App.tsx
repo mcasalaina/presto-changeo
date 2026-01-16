@@ -21,8 +21,6 @@ function App() {
       timestamp: new Date()
     }
   ])
-  const [activeTab, setActiveTab] = useState('dashboard')
-
   const getStatusColor = (status: ConnectionState): string => {
     switch (status) {
       case 'connected': return '#4ade80'
@@ -63,14 +61,6 @@ function App() {
       handleSendMessage()
     }
   }
-
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
-    { id: 'accounts', label: 'Accounts', icon: '👤' },
-    { id: 'history', label: 'History', icon: '📋' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
-  ]
 
   return (
     <div className="app">
@@ -120,7 +110,7 @@ function App() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
-        {/* Central Visualization Area */}
+        {/* Central Visualization Area - fills entire dashboard */}
         <div className="visualization-area">
           <div className="viz-placeholder">
             <div className="viz-icon">📊</div>
@@ -129,20 +119,6 @@ function App() {
             <p className="viz-hint">Charts and data will appear here based on your queries.</p>
           </div>
         </div>
-
-        {/* Bottom Navigation Tabs */}
-        <nav className="bottom-tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span className="tab-icon">{tab.icon}</span>
-              <span className="tab-label">{tab.label}</span>
-            </button>
-          ))}
-        </nav>
       </main>
     </div>
   )
