@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
+import { TypingIndicator } from './components/TypingIndicator'
 import type { ConnectionState } from './lib/websocket'
 import './App.css'
 
@@ -11,7 +12,7 @@ interface ChatMessage {
 }
 
 function App() {
-  const { status, send } = useWebSocket()
+  const { status, send, lastMessage } = useWebSocket()
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -22,6 +23,58 @@ function App() {
     }
   ])
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [isTyping, setIsTyping] = useState(false)
+  const streamingIdRef = useRef<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isTyping])
+
+  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (!lastMessage) return
+
+    if (lastMessage.type === 'chat_start') {
+      // AI is starting to respond - show typing indicator and create placeholder message
+      setIsTyping(true)
+      const newId = Date.now().toString()
+      streamingIdRef.current = newId
+      setMessages(prev => [...prev, {
+        id: newId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date()
+      }])
+    } else if (lastMessage.type === 'chat_chunk') {
+      const { text, done } = lastMessage.payload as { text: string; done: boolean }
+      if (done) {
+        // Streaming complete
+        setIsTyping(false)
+        streamingIdRef.current = null
+      } else if (text && streamingIdRef.current) {
+        // Append text to current streaming message
+        setMessages(prev => prev.map(msg =>
+          msg.id === streamingIdRef.current
+            ? { ...msg, content: msg.content + text }
+            : msg
+        ))
+      }
+    } else if (lastMessage.type === 'chat_error') {
+      // Handle error from backend
+      setIsTyping(false)
+      const { error } = lastMessage.payload as { error: string }
+      if (streamingIdRef.current) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === streamingIdRef.current
+            ? { ...msg, content: `Error: ${error}` }
+            : msg
+        ))
+        streamingIdRef.current = null
+      }
+    }
+  }, [lastMessage])
 
   const getStatusColor = (status: ConnectionState): string => {
     switch (status) {
@@ -44,16 +97,6 @@ function App() {
     setMessages(prev => [...prev, userMessage])
     send({ type: 'chat', payload: { text: inputValue } })
     setInputValue('')
-
-    setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'I received your message. Full chat functionality coming in Phase 2.',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, assistantMessage])
-    }, 500)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -89,6 +132,8 @@ function App() {
               </div>
             </div>
           ))}
+          {isTyping && <TypingIndicator />}
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="chat-input-area">
