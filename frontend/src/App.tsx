@@ -17,13 +17,15 @@ function App() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m Presto-Change-O, your dynamic AI dashboard. Say "Presto-Change-O, you\'re a bank" to transform me into any industry!',
+      content: 'Hello! I\'m your AI assistant. Say "Presto-Change-O, you\'re a bank" to transform this interface into any industry!',
       timestamp: new Date()
     }
   ])
+  const [activeTab, setActiveTab] = useState('dashboard')
+
   const getStatusColor = (status: ConnectionState): string => {
     switch (status) {
-      case 'connected': return '#4ade80'
+      case 'connected': return '#22c55e'
       case 'connecting': return '#facc15'
       case 'error': return '#f87171'
       default: return '#94a3b8'
@@ -43,12 +45,11 @@ function App() {
     send({ type: 'chat', payload: { text: inputValue } })
     setInputValue('')
 
-    // Placeholder response
     setTimeout(() => {
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I received your message. Chat functionality will be fully implemented in Phase 2.',
+        content: 'I received your message. Full chat functionality coming in Phase 2.',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, assistantMessage])
@@ -62,15 +63,21 @@ function App() {
     }
   }
 
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'accounts', label: 'Accounts', icon: '👤' },
+    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'history', label: 'History', icon: '📋' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' }
+  ]
+
   return (
     <div className="app">
       {/* Left Panel - Chat */}
       <aside className="chat-panel">
         <header className="chat-header">
           <span className="header-title">Chat Assistant</span>
-          <div className="connection-badge" style={{ backgroundColor: status === 'connected' ? '#065f46' : '#7c2d12' }}>
-            <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
-          </div>
+          <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
         </header>
 
         <div className="chat-messages">
@@ -110,15 +117,27 @@ function App() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
-        {/* Central Visualization Area - fills entire dashboard */}
         <div className="visualization-area">
-          <div className="viz-placeholder">
+          <div className="viz-content">
             <div className="viz-icon">📊</div>
-            <h3>Welcome</h3>
+            <h2>Welcome</h2>
             <p>Say "Presto-Change-O, you're a bank" to transform this interface.</p>
             <p className="viz-hint">Charts and data will appear here based on your queries.</p>
           </div>
         </div>
+
+        <nav className="bottom-tabs">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="tab-icon">{tab.icon}</span>
+              <span className="tab-label">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
       </main>
     </div>
   )
