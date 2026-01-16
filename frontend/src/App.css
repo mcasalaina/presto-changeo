@@ -60,3 +60,91 @@
   color: #94a3b8;
   text-align: center;
 }
+
+.test-panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #1e293b;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 500px;
+}
+
+.test-panel-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+.test-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.test-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+}
+
+.test-input::placeholder {
+  color: #64748b;
+}
+
+.test-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.test-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-button {
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.test-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.test-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-response {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #0f172a;
+  border-radius: 0.375rem;
+}
+
+.test-response-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.test-response-content {
+  display: block;
+  font-size: 0.875rem;
+  color: #4ade80;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
