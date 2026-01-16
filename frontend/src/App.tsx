@@ -77,13 +77,9 @@ function App() {
       {/* Left Panel - Chat */}
       <aside className="chat-panel">
         <header className="chat-header">
-          <div className="logo-area">
-            <span className="logo-icon">✨</span>
-            <h1 className="logo-text">Presto-Change-O</h1>
-          </div>
+          <span className="header-title">Chat Assistant</span>
           <div className="connection-badge" style={{ backgroundColor: status === 'connected' ? '#065f46' : '#7c2d12' }}>
             <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
-            <span>{status === 'connected' ? 'Connected' : status}</span>
           </div>
         </header>
 
@@ -124,54 +120,13 @@ function App() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
-        {/* Dashboard Header */}
-        <header className="dashboard-header">
-          <div className="modes-section">
-            <h2 className="section-title">MODES</h2>
-            <div className="mode-chips">
-              <button className="mode-chip active">Default</button>
-              <button className="mode-chip">Banking</button>
-              <button className="mode-chip">Insurance</button>
-              <button className="mode-chip">Healthcare</button>
-            </div>
-          </div>
-          <div className="status-section">
-            <h2 className="section-title">STATUS</h2>
-            <div className="status-indicators">
-              <span className="status-item active">● Ready</span>
-              <span className="status-item">○ Voice</span>
-              <span className="status-item">○ Processing</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Metrics Row */}
-        <div className="metrics-row">
-          <div className="metric-card">
-            <span className="metric-label">Active Mode</span>
-            <span className="metric-value">Default</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">Session</span>
-            <span className="metric-value">00:00</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">Messages</span>
-            <span className="metric-value">{messages.length}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">API Status</span>
-            <span className="metric-value success">Online</span>
-          </div>
-        </div>
-
         {/* Central Visualization Area */}
         <div className="visualization-area">
           <div className="viz-placeholder">
             <div className="viz-icon">📊</div>
-            <h3>Visualization Area</h3>
-            <p>Charts and graphs will appear here based on your queries.</p>
-            <p className="viz-hint">Try: "Show me my account balance" or "Display spending chart"</p>
+            <h3>Welcome</h3>
+            <p>Say "Presto-Change-O, you're a bank" to transform this interface.</p>
+            <p className="viz-hint">Charts and data will appear here based on your queries.</p>
           </div>
         </div>
 
