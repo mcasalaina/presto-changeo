@@ -8,11 +8,16 @@ export interface DashboardProps {
 }
 
 export function Dashboard({ metrics, visualization }: DashboardProps) {
+  // When visualization is present, hide metrics and show chart full-width
+  const hasVisualization = visualization != null
+
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-metrics">
-        <MetricsPanel metrics={metrics} />
-      </div>
+    <div className={`dashboard-container ${hasVisualization ? 'dashboard-chart-mode' : ''}`}>
+      {!hasVisualization && (
+        <div className="dashboard-metrics">
+          <MetricsPanel metrics={metrics} />
+        </div>
+      )}
       <div className="dashboard-visualization">
         <VisualizationArea content={visualization} />
       </div>
