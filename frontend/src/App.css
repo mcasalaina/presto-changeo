@@ -570,12 +570,113 @@ html, body, #root {
 }
 
 .chart-value {
-  width: 60px;
+  width: 100px;
   font-size: 14px;
   font-weight: 600;
   color: var(--theme-primary);
   text-align: left;
   flex-shrink: 0;
+}
+
+/* Vertical Bar Chart */
+.vertical-bars {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 32px;
+  padding: 24px 0;
+}
+
+.vertical-bar-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 80px;
+}
+
+.vertical-bar-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-primary);
+  white-space: nowrap;
+}
+
+.vertical-bar-track {
+  width: 48px;
+  height: 200px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.vertical-bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, black));
+  border-radius: 4px;
+  transition: height 0.5s ease-out;
+}
+
+.vertical-bar-label {
+  font-size: 13px;
+  color: #334155;
+  text-align: center;
+}
+
+/* Pie Chart */
+.pie-chart-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 24px;
+}
+
+.pie-chart {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.pie-legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.pie-legend-label {
+  color: #334155;
+  min-width: 80px;
+}
+
+.pie-legend-value {
+  font-weight: 600;
+  color: var(--theme-primary);
+  min-width: 100px;
+}
+
+.pie-legend-percent {
+  color: #64748b;
+  font-size: 13px;
 }
 
 /* ==================== PERSONA CARD ==================== */
@@ -623,4 +724,109 @@ html, body, #root {
   font-size: 14px;
   font-weight: 600;
   color: var(--theme-primary);
+}
+
+/* ==================== VOICE TOGGLE ==================== */
+
+.voice-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.voice-button:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.voice-button.active {
+  border-color: #22c55e;
+  background: #22c55e;
+  color: white;
+}
+
+.voice-button.connecting {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.voice-button.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Listening animation - subtle pulse when user is speaking */
+.voice-button.listening {
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+/* Speaking animation - different rhythm when AI is speaking */
+.voice-button.speaking {
+  animation: voice-speak 0.8s ease-in-out infinite;
+}
+
+@keyframes voice-speak {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Mute button */
+.mute-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.mute-button:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mute-button.muted {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Voice status indicator */
+.voice-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* Spin animation for connecting state */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
