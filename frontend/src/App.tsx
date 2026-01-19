@@ -3,6 +3,8 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
 import { ChartRenderer } from './components/ChartRenderer'
+import { ModeProvider, useMode } from './context/ModeContext'
+import type { Mode } from './types/mode'
 import type { Metric } from './components/MetricsPanel'
 import type { ConnectionState, WebSocketMessage } from './lib/websocket'
 import './App.css'
@@ -14,20 +16,21 @@ interface ChatMessage {
   timestamp: Date
 }
 
-function App() {
+function AppContent() {
+  const { mode, setMode } = useMode()
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m your AI assistant. Say "Presto-Change-O, you\'re a bank" to transform this interface into any industry!',
+      content: 'Hello! I\'m your Banking assistant. Say "Presto-Change-O, you\'re an insurance company" or "...you\'re a healthcare provider" to transform this interface!',
       timestamp: new Date()
     }
   ])
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isTyping, setIsTyping] = useState(false)
   const [visualization, setVisualization] = useState<React.ReactNode>(null)
-  const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>()
+  const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(mode.defaultMetrics)
   const streamingIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -101,8 +104,50 @@ function App() {
         }
         setDashboardMetrics(metricsResult.metrics)
       }
+    } else if (message.type === 'mode_switch') {
+      // Handle mode switch from backend
+      // Backend sends snake_case, transform to camelCase for frontend
+      interface BackendModePayload {
+        mode: {
+          id: string
+          name: string
+          theme: {
+            primary: string
+            secondary: string
+            background: string
+            surface: string
+            text: string
+            text_muted: string
+          }
+          tabs: Array<{ id: string; label: string; icon: string }>
+          defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
+        }
+      }
+      const payload = message.payload as BackendModePayload
+      const newMode: Mode = {
+        id: payload.mode.id,
+        name: payload.mode.name,
+        theme: {
+          primary: payload.mode.theme.primary,
+          secondary: payload.mode.theme.secondary,
+          background: payload.mode.theme.background,
+          surface: payload.mode.theme.surface,
+          text: payload.mode.theme.text,
+          textMuted: payload.mode.theme.text_muted,
+        },
+        tabs: payload.mode.tabs,
+        systemPrompt: '',
+        defaultMetrics: payload.mode.defaultMetrics,
+      }
+      setMode(newMode)
+      // Update metrics to new mode defaults
+      setDashboardMetrics(newMode.defaultMetrics)
+      // Clear visualization on mode switch
+      setVisualization(null)
+      // Clear messages and add welcome message (backend will send welcome text via chat_chunk)
+      setMessages([])
     }
-  }, [])
+  }, [setMode])
 
   const { status, send } = useWebSocket({ onMessage: handleMessage })
 
@@ -142,24 +187,19 @@ function App() {
   }
 
   const handleNewChat = () => {
-    // Clear frontend messages
+    // Clear frontend messages with mode-specific welcome
     setMessages([{
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m your AI assistant. Say "Presto-Change-O, you\'re a bank" to transform this interface into any industry!',
+      content: `Hello! I'm your ${mode.name} assistant. Say "Presto-Change-O, you're a bank/insurance/healthcare" to transform this interface!`,
       timestamp: new Date()
     }])
+    // Reset visualization and metrics to current mode defaults
+    setVisualization(null)
+    setDashboardMetrics(mode.defaultMetrics)
     // Tell backend to clear history
     send({ type: 'clear_chat', payload: {} })
   }
-
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'accounts', label: 'Accounts', icon: '👤' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
-    { id: 'history', label: 'History', icon: '📋' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
-  ]
 
   return (
     <div className="app">
@@ -224,7 +264,7 @@ function App() {
         />
 
         <nav className="bottom-tabs">
-          {tabs.map(tab => (
+          {mode.tabs.map(tab => (
             <button
               key={tab.id}
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
@@ -237,6 +277,14 @@ function App() {
         </nav>
       </main>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <ModeProvider>
+      <AppContent />
+    </ModeProvider>
   )
 }
 
