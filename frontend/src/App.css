@@ -9,6 +9,18 @@ html, body, #root {
   width: 100%;
 }
 
+/* ==================== THEME VARIABLES ==================== */
+
+:root {
+  /* Default theme (Banking) */
+  --theme-primary: #1E88E5;
+  --theme-secondary: #43A047;
+  --theme-background: #f8fafc;
+  --theme-surface: #ffffff;
+  --theme-text: #0f172a;
+  --theme-text-muted: #64748b;
+}
+
 .app {
   display: flex;
   height: 100vh;
@@ -195,7 +207,7 @@ html, body, #root {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #f8fafc;
+  background-color: var(--theme-background);
   min-width: 0;
 }
 
@@ -239,8 +251,8 @@ html, body, #root {
 }
 
 .metric-card {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  background-color: var(--theme-surface);
+  border: 1px solid color-mix(in srgb, var(--theme-text-muted) 20%, transparent);
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -250,7 +262,7 @@ html, body, #root {
   display: block;
   font-size: 12px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--theme-text-muted);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -265,7 +277,7 @@ html, body, #root {
 .metric-value {
   font-size: 24px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--theme-text);
 }
 
 .metric-unit {
@@ -420,11 +432,11 @@ html, body, #root {
 }
 
 .tab-button.active {
-  background-color: #eff6ff;
+  background-color: color-mix(in srgb, var(--theme-primary) 10%, transparent);
 }
 
 .tab-button.active .tab-label {
-  color: #3b82f6;
+  color: var(--theme-primary);
 }
 
 .tab-icon {
@@ -548,7 +560,7 @@ html, body, #root {
 
 .chart-bar {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(90deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, black));
   border-radius: 4px;
   transition: width 0.5s ease-out;
 }
@@ -557,7 +569,7 @@ html, body, #root {
   width: 60px;
   font-size: 14px;
   font-weight: 600;
-  color: #1d4ed8;
+  color: var(--theme-primary);
   text-align: left;
   flex-shrink: 0;
 }
