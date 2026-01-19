@@ -4,22 +4,64 @@ FastAPI application with WebSocket endpoint for real-time communication.
 """
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from chat import handle_chat_message
+from azure.ai.inference.models import SystemMessage, UserMessage
+
+from auth import get_inference_client
+from chat import handle_chat_message, clear_history
+
+MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def verify_llm_connection() -> None:
+    """
+    Verify LLM connection at startup by running a test prompt.
+
+    This forces authentication and validates the model is responding.
+    Raises an exception if connection fails, preventing server startup.
+    """
+    logger.info("Verifying LLM connection...")
+    logger.info("(Browser login may be required)")
+
+    client = get_inference_client()
+
+    # Send a minimal test prompt
+    response = client.complete(
+        model=MODEL_DEPLOYMENT,
+        messages=[
+            SystemMessage(content="You are a test assistant."),
+            UserMessage(content="Say hello"),
+        ],
+    )
+
+    # Log full response for debugging
+    logger.info(f"LLM response object: {response}")
+
+    # If we got here without exception, connection works
+    if response.choices:
+        content = response.choices[0].message.content if response.choices[0].message else ""
+        logger.info(f"LLM connection verified. Response: {content[:50] if content else '(empty)'}")
+    else:
+        logger.info("LLM connection verified (no choices in response, but no error)")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown events."""
     logger.info("Presto-Change-O backend starting...")
+
+    # Verify LLM connection before accepting requests
+    verify_llm_connection()
+
     logger.info("Server running on http://localhost:8000")
     logger.info("WebSocket endpoint available at ws://localhost:8000/ws")
     yield
@@ -85,6 +127,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             "type": "error",
                             "payload": {"error": "Chat message text is required"}
                         }))
+                elif message_type == "clear_chat":
+                    # Clear conversation history
+                    clear_history()
+                    logger.info("Conversation history cleared")
+                    await websocket.send_text(json.dumps({
+                        "type": "chat_cleared",
+                        "payload": {}
+                    }))
                 else:
                     # Echo for unknown types (debugging)
                     await websocket.send_text(f"Echo: {data}")

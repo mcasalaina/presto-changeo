@@ -9,10 +9,14 @@ import {
 
 const DEFAULT_URL = 'ws://localhost:8000/ws'
 
+export interface UseWebSocketOptions {
+  url?: string
+  onMessage?: (message: WebSocketMessage) => void
+}
+
 export interface UseWebSocketReturn {
   status: ConnectionState
   send: (message: object) => void
-  lastMessage: WebSocketMessage | null
   connect: () => void
   disconnect: () => void
 }
@@ -22,17 +26,19 @@ export interface UseWebSocketReturn {
  * Auto-connects on mount, disconnects on unmount
  * Uses websocket.ts utilities for connection handling with automatic reconnection
  *
- * @param url - WebSocket server URL (defaults to ws://localhost:8000/ws)
- * @returns Object with status, send function, lastMessage, connect, and disconnect
+ * @param options - Configuration options including URL and message handler
+ * @returns Object with status, send function, connect, and disconnect
  */
-export function useWebSocket(url: string = DEFAULT_URL): UseWebSocketReturn {
+export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
+  const { url = DEFAULT_URL, onMessage } = options
   const [status, setStatus] = useState<ConnectionState>('disconnected')
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const urlRef = useRef(url)
+  const onMessageRef = useRef(onMessage)
 
-  // Update URL ref when it changes
+  // Update refs when they change
   urlRef.current = url
+  onMessageRef.current = onMessage
 
   const connect = useCallback(() => {
     // Don't create new connection if one exists and is open/connecting
@@ -46,7 +52,7 @@ export function useWebSocket(url: string = DEFAULT_URL): UseWebSocketReturn {
 
     wsRef.current = connectWebSocket(urlRef.current, {
       onStateChange: setStatus,
-      onMessage: setLastMessage,
+      onMessage: (msg) => onMessageRef.current?.(msg),
       onError: (error) => {
         console.error('WebSocket error:', error)
       },
@@ -85,7 +91,6 @@ export function useWebSocket(url: string = DEFAULT_URL): UseWebSocketReturn {
   return {
     status,
     send,
-    lastMessage,
     connect,
     disconnect,
   }

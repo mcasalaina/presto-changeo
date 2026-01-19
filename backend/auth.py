@@ -6,7 +6,7 @@ import os
 import logging
 from typing import Optional
 
-from azure.identity import InteractiveBrowserCredential
+from azure.identity import AzureCliCredential, InteractiveBrowserCredential, ChainedTokenCredential
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import TokenCredential
 from dotenv import load_dotenv
@@ -17,25 +17,31 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Cached credential instance (lazy initialization)
-_credential: Optional[InteractiveBrowserCredential] = None
+_credential: Optional[TokenCredential] = None
 
 
-def get_azure_credential() -> InteractiveBrowserCredential:
+def get_azure_credential() -> TokenCredential:
     """
-    Get Azure credential using interactive browser authentication.
+    Get Azure credential, trying CLI first then falling back to browser.
+
+    Tries authentication methods in order:
+    1. Azure CLI (az login) - uses cached tokens
+    2. Interactive browser (fallback if CLI unavailable)
 
     Returns a cached credential instance on subsequent calls.
-    Opens browser for user login on first authentication.
 
     Returns:
-        InteractiveBrowserCredential instance
+        TokenCredential instance
     """
     global _credential
 
     if _credential is None:
-        logger.info("Initializing Azure InteractiveBrowserCredential...")
-        _credential = InteractiveBrowserCredential()
-        logger.info("Azure credential initialized (browser auth will occur on first token request)")
+        logger.info("Initializing Azure credentials...")
+        _credential = ChainedTokenCredential(
+            AzureCliCredential(),
+            InteractiveBrowserCredential(),
+        )
+        logger.info("Azure credential chain initialized (CLI -> Browser fallback)")
 
     return _credential
 
@@ -88,6 +94,7 @@ def get_inference_client(credential: Optional[TokenCredential] = None) -> ChatCo
     client = ChatCompletionsClient(
         endpoint=endpoint,
         credential=credential,
+        credential_scopes=["https://cognitiveservices.azure.com/.default"],
     )
     logger.info("ChatCompletionsClient created successfully")
 

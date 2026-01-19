@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { TypingIndicator } from './components/TypingIndicator'
-import type { ConnectionState } from './lib/websocket'
+import type { ConnectionState, WebSocketMessage } from './lib/websocket'
 import './App.css'
 
 interface ChatMessage {
@@ -12,7 +12,6 @@ interface ChatMessage {
 }
 
 function App() {
-  const { status, send, lastMessage } = useWebSocket()
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -27,16 +26,9 @@ function App() {
   const streamingIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
-
-  // Handle incoming WebSocket messages
-  useEffect(() => {
-    if (!lastMessage) return
-
-    if (lastMessage.type === 'chat_start') {
+  // Handle incoming WebSocket messages via callback (avoids state batching issues)
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    if (message.type === 'chat_start') {
       // AI is starting to respond - show typing indicator and create placeholder message
       setIsTyping(true)
       const newId = Date.now().toString()
@@ -47,34 +39,43 @@ function App() {
         content: '',
         timestamp: new Date()
       }])
-    } else if (lastMessage.type === 'chat_chunk') {
-      const { text, done } = lastMessage.payload as { text: string; done: boolean }
+    } else if (message.type === 'chat_chunk') {
+      const { text, done } = message.payload as { text: string; done: boolean }
       if (done) {
         // Streaming complete
         setIsTyping(false)
         streamingIdRef.current = null
       } else if (text && streamingIdRef.current) {
         // Append text to current streaming message
+        const currentId = streamingIdRef.current
         setMessages(prev => prev.map(msg =>
-          msg.id === streamingIdRef.current
+          msg.id === currentId
             ? { ...msg, content: msg.content + text }
             : msg
         ))
       }
-    } else if (lastMessage.type === 'chat_error') {
+    } else if (message.type === 'chat_error') {
       // Handle error from backend
       setIsTyping(false)
-      const { error } = lastMessage.payload as { error: string }
+      const { error } = message.payload as { error: string }
       if (streamingIdRef.current) {
+        const currentId = streamingIdRef.current
         setMessages(prev => prev.map(msg =>
-          msg.id === streamingIdRef.current
+          msg.id === currentId
             ? { ...msg, content: `Error: ${error}` }
             : msg
         ))
         streamingIdRef.current = null
       }
     }
-  }, [lastMessage])
+  }, [])
+
+  const { status, send } = useWebSocket({ onMessage: handleMessage })
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isTyping])
 
   const getStatusColor = (status: ConnectionState): string => {
     switch (status) {
@@ -106,6 +107,18 @@ function App() {
     }
   }
 
+  const handleNewChat = () => {
+    // Clear frontend messages
+    setMessages([{
+      id: '1',
+      role: 'assistant',
+      content: 'Hello! I\'m your AI assistant. Say "Presto-Change-O, you\'re a bank" to transform this interface into any industry!',
+      timestamp: new Date()
+    }])
+    // Tell backend to clear history
+    send({ type: 'clear_chat', payload: {} })
+  }
+
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'accounts', label: 'Accounts', icon: '👤' },
@@ -120,7 +133,12 @@ function App() {
       <aside className="chat-panel">
         <header className="chat-header">
           <span className="header-title">Chat Assistant</span>
-          <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
+          <div className="header-actions">
+            <button className="new-chat-button" onClick={handleNewChat} title="New Chat">
+              +
+            </button>
+            <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
+          </div>
         </header>
 
         <div className="chat-messages">
