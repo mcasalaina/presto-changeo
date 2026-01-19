@@ -2,6 +2,7 @@
 Chat Handler Module
 Handles chat messages and streams LLM responses via WebSocket.
 """
+import hashlib
 import json
 import logging
 import os
@@ -14,7 +15,8 @@ from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessa
 
 from auth import get_inference_client
 from tools import TOOL_DEFINITIONS, execute_tool
-from modes import get_mode, get_current_mode, set_current_mode
+from modes import Mode, get_mode, get_current_mode, set_current_mode
+from persona import generate_persona
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
@@ -26,6 +28,20 @@ logger = logging.getLogger(__name__)
 # Conversation history per connection (simple in-memory storage)
 # In production, this would be session-based
 _conversation_history: list = []
+
+# Current persona state (module-level, similar to conversation history)
+_current_persona: dict = {}
+
+
+def get_session_seed() -> int:
+    """
+    Get deterministic seed for persona generation.
+    For now, use a fixed seed per session.
+    In multi-connection setup, derive from WebSocket connection ID.
+    """
+    # Simple implementation: use hash of a session marker
+    # TODO: In production, derive from actual session/connection ID
+    return int(hashlib.md5(b"demo-session").hexdigest()[:8], 16)
 
 
 def get_conversation_history() -> list:
@@ -44,6 +60,58 @@ def add_to_history(role: str, content: str) -> None:
 def clear_history() -> None:
     """Clear conversation history."""
     _conversation_history.clear()
+
+
+def build_system_prompt(mode: Mode, persona: dict) -> str:
+    """
+    Build system prompt with persona context for AI responses.
+
+    Args:
+        mode: The current Mode configuration
+        persona: The generated persona dictionary
+
+    Returns:
+        System prompt string with persona details appended
+    """
+    base = mode.system_prompt
+    if not persona:
+        return base
+
+    # Build persona context based on mode type
+    if mode.id == "banking":
+        persona_context = f"""
+Current Customer Profile:
+- Name: {persona.get('name')}
+- Member Since: {persona.get('member_since')}
+- Checking Balance: ${persona.get('checking_balance', 0):,.2f}
+- Savings Balance: ${persona.get('savings_balance', 0):,.2f}
+- Credit Score: {persona.get('credit_score')}
+
+Reference this customer's information naturally in your responses."""
+    elif mode.id == "insurance":
+        persona_context = f"""
+Current Customer Profile:
+- Name: {persona.get('name')}
+- Member Since: {persona.get('member_since')}
+- Active Policies: {len(persona.get('active_policies', []))}
+- Total Coverage: ${persona.get('total_coverage', 0):,.2f}
+- Monthly Premium: ${persona.get('monthly_premium', 0):,.2f}
+
+Reference this customer's information naturally in your responses."""
+    elif mode.id == "healthcare":
+        persona_context = f"""
+Current Patient Profile:
+- Name: {persona.get('name')}
+- Member ID: {persona.get('member_id')}
+- Primary Care Provider: {persona.get('primary_care_provider')}
+- Deductible Progress: ${persona.get('deductible_met', 0):,.2f} of ${persona.get('deductible', 0):,.2f}
+- Active Prescriptions: {len(persona.get('active_prescriptions', []))}
+
+Reference this patient's information naturally in your responses."""
+    else:
+        persona_context = ""
+
+    return f"{base}\n\n{persona_context}" if persona_context else base
 
 
 def detect_mode_switch(text: str) -> str | None:
@@ -91,6 +159,7 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
     logger.info(f"Handling chat message: {text[:100]}...")
 
     # Check for mode switch command
+    global _current_persona
     new_mode_id = detect_mode_switch(text)
     if new_mode_id:
         new_mode = set_current_mode(new_mode_id)
@@ -100,7 +169,11 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
             # Clear conversation history on mode switch
             clear_history()
 
-            # Send mode_switch message to frontend
+            # Generate persona for the new mode
+            _current_persona = generate_persona(new_mode_id, get_session_seed())
+            logger.info(f"Generated persona: {_current_persona.get('name', 'Unknown')}")
+
+            # Send mode_switch message to frontend with persona
             await websocket.send_text(json.dumps({
                 "type": "mode_switch",
                 "payload": {
@@ -110,7 +183,8 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                         "theme": new_mode.theme.model_dump(),
                         "tabs": [tab.model_dump() for tab in new_mode.tabs],
                         "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
-                    }
+                    },
+                    "persona": _current_persona
                 }
             }))
 
@@ -146,8 +220,9 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
         add_to_history("user", text)
 
         # Build messages with conversation history using current mode's system prompt
+        # Include persona context in system prompt for AI awareness
         current_mode = get_current_mode()
-        messages = [SystemMessage(content=current_mode.system_prompt)]
+        messages = [SystemMessage(content=build_system_prompt(current_mode, _current_persona))]
         for msg in get_conversation_history():
             if msg["role"] == "user":
                 messages.append(UserMessage(content=msg["content"]))
