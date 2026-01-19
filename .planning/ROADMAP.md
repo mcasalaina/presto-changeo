@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Chat Interface | 2/2 | Complete | 2026-01-18 |
 | 3. Dashboard | 3/3 | Complete | 2026-01-18 |
 | 4. Mode System | 3/3 | Complete | 2026-01-18 |
-| 5. Persona | 0/? | Not started | - |
+| 5. Persona | 2/2 | Complete | 2026-01-18 |
 | 6. Voice | 0/? | Not started | - |
 | 7. Dynamic Generation | 0/? | Not started | - |
 | 8. Caching | 0/? | Not started | - |
