@@ -170,15 +170,19 @@ function App() {
         </header>
 
         <div className="chat-messages">
-          {messages.map(msg => (
-            <div key={msg.id} className={`chat-message ${msg.role}`}>
-              {msg.role === 'assistant' && <div className="message-avatar">🤖</div>}
-              <div className="message-content">
-                <p>{msg.content}</p>
+          {messages.map(msg => {
+            // Check if this is the currently streaming message with no content yet
+            const isStreamingEmpty = isTyping && msg.id === streamingIdRef.current && msg.content === ''
+
+            return (
+              <div key={msg.id} className={`chat-message ${msg.role}`}>
+                {msg.role === 'assistant' && <div className="message-avatar">🤖</div>}
+                <div className="message-content">
+                  {isStreamingEmpty ? <TypingIndicator /> : <p>{msg.content}</p>}
+                </div>
               </div>
-            </div>
-          ))}
-          {isTyping && <TypingIndicator />}
+            )
+          })}
           <div ref={messagesEndRef} />
         </div>
 

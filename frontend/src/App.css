@@ -440,8 +440,7 @@ html, body, #root {
 .typing-indicator {
   display: flex;
   gap: 4px;
-  padding: 12px 16px;
-  margin-left: 44px; /* Align with assistant messages (avatar width + gap) */
+  padding: 4px 0; /* Minimal padding since it's inside message-content which has its own padding */
 }
 
 .typing-dot {
