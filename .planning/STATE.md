@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-15)
 ## Current Position
 
 Phase: 5 of 8 (Persona)
-Plan: 0 of ? complete in phase
-Status: Ready to plan
-Last activity: 2026-01-18 - Completed Phase 4 (Mode System)
+Plan: 1 of ? complete in phase
+Status: In progress
+Last activity: 2026-01-19 - Completed 05-01-PLAN.md (Core Persona Infrastructure)
 
-Progress: [######----] ~53%
+Progress: [######----] ~58%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: ~4.5 minutes
-- Total execution time: ~47 minutes
+- Total plans completed: 11
+- Average duration: ~4.9 minutes
+- Total execution time: ~54 minutes
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [######----] ~53%
 | 2. Chat Interface | 2/2 | ~5 min | ~2.5 min |
 | 3. Dashboard | 3/3 | ~20 min | ~6.5 min |
 | 4. Mode System | 3/3 | ~14 min | ~4.7 min |
+| 5. Persona | 1/? | ~7 min | ~7 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (~8m), 04-02 (~3m), 04-01 (~3m), 03-03 (~15m), 03-01 (~3m)
+- Last 5 plans: 05-01 (~7m), 04-03 (~8m), 04-02 (~3m), 04-01 (~3m), 03-03 (~15m)
 - Trend: Steady pace
 
 ## Accumulated Context
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 | 04-02 | Clear history on mode switch | Fresh context for new industry |
 | 04-03 | snake_case to camelCase in mode_switch handler | Backend uses text_muted, frontend uses textMuted |
 | 04-03 | Clear messages on mode switch | Backend sends fresh welcome via chat_chunk |
+| 05-01 | Faker seed_instance() not class-level Faker.seed() | Multi-session isolation for concurrent users |
+| 05-01 | Module-level _current_persona state | Matches conversation_history pattern for simplicity |
+| 05-01 | Fixed demo-session seed for MVP | TODO: derive from WebSocket connection ID in production |
 
 ### Pending Todos
 
@@ -80,7 +84,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-19
-Stopped at: Completed 04-03-PLAN.md (Mode Integration)
+Stopped at: Completed 05-01-PLAN.md (Core Persona Infrastructure)
 Resume file: None
 
 ## Completed Plans
@@ -97,3 +101,4 @@ Resume file: None
 | 04-01 | Mode infrastructure with TypeScript/Pydantic types and CSS theming | 2026-01-18 |
 | 04-02 | Pre-built modes with Presto-Change-O detection and WebSocket switching | 2026-01-18 |
 | 04-03 | React ModeContext integration with dynamic tabs and theming | 2026-01-19 |
+| 05-01 | Faker-based seeded persona generation with AI system prompt integration | 2026-01-19 |
