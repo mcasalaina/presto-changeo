@@ -211,6 +211,10 @@ html, body, #root {
   min-width: 0;
 }
 
+.persona-header {
+  padding: 16px 24px 0;
+}
+
 /* Dashboard Container */
 .dashboard-container {
   flex: 1;

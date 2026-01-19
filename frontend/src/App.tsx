@@ -3,8 +3,9 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
 import { ChartRenderer } from './components/ChartRenderer'
+import { PersonaCard } from './components/PersonaCard'
 import { ModeProvider, useMode } from './context/ModeContext'
-import type { Mode } from './types/mode'
+import type { Mode, Persona } from './types/mode'
 import type { Metric } from './components/MetricsPanel'
 import type { ConnectionState, WebSocketMessage } from './lib/websocket'
 import './App.css'
@@ -31,6 +32,7 @@ function AppContent() {
   const [isTyping, setIsTyping] = useState(false)
   const [visualization, setVisualization] = useState<React.ReactNode>(null)
   const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(mode.defaultMetrics)
+  const [persona, setPersona] = useState<Persona>(null)
   const streamingIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -122,6 +124,7 @@ function AppContent() {
           tabs: Array<{ id: string; label: string; icon: string }>
           defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
         }
+        persona?: Persona
       }
       const payload = message.payload as BackendModePayload
       const newMode: Mode = {
@@ -144,6 +147,10 @@ function AppContent() {
       setDashboardMetrics(newMode.defaultMetrics)
       // Clear visualization on mode switch
       setVisualization(null)
+      // Update persona if provided
+      if (payload.persona) {
+        setPersona(payload.persona)
+      }
       // Clear messages and add welcome message (backend will send welcome text via chat_chunk)
       setMessages([])
     }
@@ -258,6 +265,11 @@ function AppContent() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
+        {persona && (
+          <div className="persona-header">
+            <PersonaCard persona={persona} modeId={mode.id} />
+          </div>
+        )}
         <Dashboard
           metrics={dashboardMetrics}
           visualization={visualization}
