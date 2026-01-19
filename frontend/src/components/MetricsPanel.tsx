@@ -9,10 +9,10 @@ export interface MetricsPanelProps {
 }
 
 const defaultMetrics: Metric[] = [
-  { label: 'Location', value: '12.5', unit: 'Million Km' },
-  { label: 'Temperature', value: '-66.34', unit: '°C' },
-  { label: 'Angular Velocity', value: '285.46', unit: 'RPM' },
-  { label: 'CPU Load', value: '19.88', unit: '%' },
+  { label: 'Account Balance', value: '$24,856.42' },
+  { label: 'Recent Transactions', value: '12' },
+  { label: 'Pending Payments', value: '3' },
+  { label: 'Credit Score', value: '742' },
 ]
 
 export function MetricsPanel({ metrics = defaultMetrics }: MetricsPanelProps) {
