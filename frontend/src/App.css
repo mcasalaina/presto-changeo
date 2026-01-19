@@ -189,13 +189,13 @@ html, body, #root {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* ==================== RIGHT PANEL - DASHBOARD ==================== */
+/* ==================== RIGHT PANEL - DASHBOARD (LIGHT THEME) ==================== */
 
 .dashboard-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #0f172a;
+  background-color: #f8fafc;
   min-width: 0;
 }
 
@@ -218,7 +218,7 @@ html, body, #root {
   min-width: 0;
 }
 
-/* Metrics Panel */
+/* Metrics Panel (Light Theme) */
 .metrics-panel {
   height: 100%;
 }
@@ -230,17 +230,18 @@ html, body, #root {
 }
 
 .metric-card {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .metric-label {
   display: block;
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: #64748b;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -255,31 +256,32 @@ html, body, #root {
 .metric-value {
   font-size: 24px;
   font-weight: 600;
-  color: #22d3ee;
+  color: #0f172a;
 }
 
 .metric-unit {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #94a3b8;
 }
 
-/* Visualization Area */
+/* Visualization Area (Light Theme) */
 .visualization-container {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .visualization-title {
   padding: 16px 20px;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .visualization-content {
@@ -298,26 +300,26 @@ html, body, #root {
 .visualization-placeholder .viz-icon {
   font-size: 64px;
   margin-bottom: 24px;
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
 .visualization-placeholder h2 {
   font-size: 24px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: #1e293b;
   margin-bottom: 12px;
 }
 
 .visualization-placeholder p {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #475569;
   margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .visualization-placeholder .viz-hint {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: #94a3b8;
   margin-top: 16px;
 }
 
@@ -467,7 +469,7 @@ html, body, #root {
   }
 }
 
-/* ==================== CHART RENDERER ==================== */
+/* ==================== CHART RENDERER (LIGHT THEME) ==================== */
 
 .chart-container {
   width: 100%;
@@ -480,14 +482,14 @@ html, body, #root {
 .chart-title {
   font-size: 20px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: #1e293b;
   text-align: center;
   margin-bottom: 8px;
 }
 
 .chart-subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #64748b;
   text-align: center;
   margin-bottom: 24px;
   text-transform: uppercase;
@@ -511,7 +513,7 @@ html, body, #root {
 .chart-label {
   width: 100px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #334155;
   text-align: right;
   flex-shrink: 0;
 }
@@ -519,14 +521,14 @@ html, body, #root {
 .chart-bar-container {
   flex: 1;
   height: 24px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #e2e8f0;
   border-radius: 4px;
   overflow: hidden;
 }
 
 .chart-bar {
   height: 100%;
-  background: linear-gradient(90deg, #22d3ee, #3b82f6);
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
   border-radius: 4px;
   transition: width 0.5s ease-out;
 }
@@ -535,7 +537,7 @@ html, body, #root {
   width: 60px;
   font-size: 14px;
   font-weight: 600;
-  color: #22d3ee;
+  color: #1d4ed8;
   text-align: left;
   flex-shrink: 0;
 }
