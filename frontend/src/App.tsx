@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
+import { ChartRenderer } from './components/ChartRenderer'
+import type { Metric } from './components/MetricsPanel'
 import type { ConnectionState, WebSocketMessage } from './lib/websocket'
 import './App.css'
 
@@ -24,6 +26,8 @@ function App() {
   ])
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isTyping, setIsTyping] = useState(false)
+  const [visualization, setVisualization] = useState<React.ReactNode>(null)
+  const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>()
   const streamingIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -67,6 +71,29 @@ function App() {
             : msg
         ))
         streamingIdRef.current = null
+      }
+    } else if (message.type === 'tool_result') {
+      // Handle visualization tool results
+      const { tool, result } = message.payload as { tool: string; result: Record<string, unknown> }
+
+      if (tool === 'show_chart') {
+        const chartResult = result as {
+          chart_type: 'line' | 'bar' | 'pie' | 'area'
+          title: string
+          data: Array<{ label: string; value: number }>
+        }
+        setVisualization(
+          <ChartRenderer
+            chartType={chartResult.chart_type}
+            title={chartResult.title}
+            data={chartResult.data}
+          />
+        )
+      } else if (tool === 'show_metrics') {
+        const metricsResult = result as {
+          metrics: Array<{ label: string; value: string | number; unit?: string }>
+        }
+        setDashboardMetrics(metricsResult.metrics)
       }
     }
   }, [])
@@ -181,7 +208,10 @@ function App() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
-        <Dashboard />
+        <Dashboard
+          metrics={dashboardMetrics}
+          visualization={visualization}
+        />
 
         <nav className="bottom-tabs">
           {tabs.map(tab => (
