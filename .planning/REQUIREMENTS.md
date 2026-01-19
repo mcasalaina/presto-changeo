@@ -23,9 +23,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Mode System
 
-- [ ] **MODE-01**: User can switch modes via "Presto-Change-O, you're a [industry]" command
-- [ ] **MODE-02**: Pre-built modes available: Banking, Insurance, Healthcare
-- [ ] **MODE-03**: Interface applies industry-appropriate color theming on mode switch
+- [x] **MODE-01**: User can switch modes via "Presto-Change-O, you're a [industry]" command
+- [x] **MODE-02**: Pre-built modes available: Banking, Insurance, Healthcare
+- [x] **MODE-03**: Interface applies industry-appropriate color theming on mode switch
 - [ ] **MODE-04**: User can request arbitrary industry and system generates mode on-demand
 
 ### Persona & Data
@@ -90,9 +90,9 @@ Which phases cover which requirements. Updated by create-roadmap.
 | DASH-02 | Phase 3 | Complete |
 | DASH-03 | Phase 3 | Complete |
 | DASH-04 | Phase 3 | Complete |
-| MODE-01 | Phase 4 | Pending |
-| MODE-02 | Phase 4 | Pending |
-| MODE-03 | Phase 4 | Pending |
+| MODE-01 | Phase 4 | Complete |
+| MODE-02 | Phase 4 | Complete |
+| MODE-03 | Phase 4 | Complete |
 | MODE-04 | Phase 7 | Pending |
 | PERS-01 | Phase 5 | Pending |
 | PERS-02 | Phase 5 | Pending |
