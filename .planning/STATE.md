@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-15)
 ## Current Position
 
 Phase: 4 of 8 (Mode System)
-Plan: 0 of ? complete in phase
-Status: Ready to plan
-Last activity: 2026-01-18 - Completed Phase 3 (Dashboard)
+Plan: 1 of ? complete in phase
+Status: In progress
+Last activity: 2026-01-18 - Completed 04-01-PLAN.md (Mode Infrastructure)
 
-Progress: [####------] ~37%
+Progress: [#####-----] ~42%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: ~4 minutes
-- Total execution time: ~33 minutes
+- Total execution time: ~36 minutes
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [####------] ~37%
 | 1. Foundation | 2/3 | ~8 min | ~4 min |
 | 2. Chat Interface | 2/2 | ~5 min | ~2.5 min |
 | 3. Dashboard | 3/3 | ~20 min | ~6.5 min |
+| 4. Mode System | 1/? | ~3 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (~15m), 03-01 (~3m), 03-02 (~2m), 02-02 (~3m), 02-01 (2m 15s)
-- Trend: 03-03 longer due to bug fixes during verification
+- Last 5 plans: 04-01 (~3m), 03-03 (~15m), 03-01 (~3m), 03-02 (~2m), 02-02 (~3m)
+- Trend: Steady pace
 
 ## Accumulated Context
 
@@ -59,6 +60,9 @@ Recent decisions affecting current work:
 | 03-03 | CSS-only bar charts | gpt-image-1-mini will generate real charts later |
 | 03-03 | Light theme dashboard | User feedback during verification |
 | 03-03 | Hide metrics when chart shown | Full width for visualization display |
+| 04-01 | CSS custom properties for theming | Enables runtime theme switching via JavaScript |
+| 04-01 | color-mix() for derived colors | Creates darker shades and opacity variants from primary |
+| 04-01 | Type parity frontend/backend | Mode interfaces match Pydantic models |
 
 ### Pending Todos
 
@@ -71,8 +75,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Completed 03-03-PLAN.md (Tool Integration) - Phase 3 complete
-Resume file: None - ready for Phase 4
+Stopped at: Completed 04-01-PLAN.md (Mode Infrastructure)
+Resume file: None
 
 ## Completed Plans
 
@@ -85,3 +89,4 @@ Resume file: None - ready for Phase 4
 | 03-01 | Dashboard layout with metrics panel and visualization area | 2026-01-18 |
 | 03-02 | LLM tool definitions with show_chart and show_metrics | 2026-01-18 |
 | 03-03 | Tool integration with ChartRenderer and end-to-end visualization | 2026-01-18 |
+| 04-01 | Mode infrastructure with TypeScript/Pydantic types and CSS theming | 2026-01-18 |
