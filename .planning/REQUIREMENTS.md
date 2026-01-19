@@ -9,17 +9,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Chat Interface
 
-- [ ] **CHAT-01**: User can view conversation history with scroll
-- [ ] **CHAT-02**: User can type messages and send via input field (Enter to send)
-- [ ] **CHAT-03**: User sees AI responses stream progressively in real-time
-- [ ] **CHAT-04**: User sees visual feedback (loading, typing indicators) during processing
+- [x] **CHAT-01**: User can view conversation history with scroll
+- [x] **CHAT-02**: User can type messages and send via input field (Enter to send)
+- [x] **CHAT-03**: User sees AI responses stream progressively in real-time
+- [x] **CHAT-04**: User sees visual feedback (loading, typing indicators) during processing
 
 ### Dashboard & Visualization
 
-- [ ] **DASH-01**: User sees central dashboard panel with visualization area
-- [ ] **DASH-02**: User sees metrics, status indicators, and KPIs in dashboard
-- [ ] **DASH-03**: User can navigate via bottom tabs that adapt per industry mode
-- [ ] **DASH-04**: AI can trigger visualizations via LLM tool calls with animation
+- [x] **DASH-01**: User sees central dashboard panel with visualization area
+- [x] **DASH-02**: User sees metrics, status indicators, and KPIs in dashboard
+- [x] **DASH-03**: User can navigate via bottom tabs that adapt per industry mode
+- [x] **DASH-04**: AI can trigger visualizations via LLM tool calls with animation
 
 ### Mode System
 
@@ -82,14 +82,14 @@ Which phases cover which requirements. Updated by create-roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHAT-01 | Phase 2 | Pending |
-| CHAT-02 | Phase 2 | Pending |
-| CHAT-03 | Phase 2 | Pending |
-| CHAT-04 | Phase 2 | Pending |
-| DASH-01 | Phase 3 | Pending |
-| DASH-02 | Phase 3 | Pending |
-| DASH-03 | Phase 3 | Pending |
-| DASH-04 | Phase 3 | Pending |
+| CHAT-01 | Phase 2 | Complete |
+| CHAT-02 | Phase 2 | Complete |
+| CHAT-03 | Phase 2 | Complete |
+| CHAT-04 | Phase 2 | Complete |
+| DASH-01 | Phase 3 | Complete |
+| DASH-02 | Phase 3 | Complete |
+| DASH-03 | Phase 3 | Complete |
+| DASH-04 | Phase 3 | Complete |
 | MODE-01 | Phase 4 | Pending |
 | MODE-02 | Phase 4 | Pending |
 | MODE-03 | Phase 4 | Pending |
