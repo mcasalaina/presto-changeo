@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-15)
 ## Current Position
 
 Phase: 4 of 8 (Mode System)
-Plan: 1 of ? complete in phase
+Plan: 2 of ? complete in phase
 Status: In progress
-Last activity: 2026-01-18 - Completed 04-01-PLAN.md (Mode Infrastructure)
+Last activity: 2026-01-18 - Completed 04-02-PLAN.md (Mode Configuration and Detection)
 
-Progress: [#####-----] ~42%
+Progress: [#####-----] ~47%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~4 minutes
-- Total execution time: ~36 minutes
+- Total execution time: ~39 minutes
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [#####-----] ~42%
 | 1. Foundation | 2/3 | ~8 min | ~4 min |
 | 2. Chat Interface | 2/2 | ~5 min | ~2.5 min |
 | 3. Dashboard | 3/3 | ~20 min | ~6.5 min |
-| 4. Mode System | 1/? | ~3 min | ~3 min |
+| 4. Mode System | 2/? | ~6 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (~3m), 03-03 (~15m), 03-01 (~3m), 03-02 (~2m), 02-02 (~3m)
+- Last 5 plans: 04-02 (~3m), 04-01 (~3m), 03-03 (~15m), 03-01 (~3m), 03-02 (~2m)
 - Trend: Steady pace
 
 ## Accumulated Context
@@ -63,6 +63,9 @@ Recent decisions affecting current work:
 | 04-01 | CSS custom properties for theming | Enables runtime theme switching via JavaScript |
 | 04-01 | color-mix() for derived colors | Creates darker shades and opacity variants from primary |
 | 04-01 | Type parity frontend/backend | Mode interfaces match Pydantic models |
+| 04-02 | Regex normalization for trigger detection | Handles variations like Presto-Change-O, presto change o |
+| 04-02 | Module-level mode state | Matches conversation_history pattern for simplicity |
+| 04-02 | Clear history on mode switch | Fresh context for new industry |
 
 ### Pending Todos
 
@@ -75,7 +78,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Completed 04-01-PLAN.md (Mode Infrastructure)
+Stopped at: Completed 04-02-PLAN.md (Mode Configuration and Detection)
 Resume file: None
 
 ## Completed Plans
@@ -90,3 +93,4 @@ Resume file: None
 | 03-02 | LLM tool definitions with show_chart and show_metrics | 2026-01-18 |
 | 03-03 | Tool integration with ChartRenderer and end-to-end visualization | 2026-01-18 |
 | 04-01 | Mode infrastructure with TypeScript/Pydantic types and CSS theming | 2026-01-18 |
+| 04-02 | Pre-built modes with Presto-Change-O detection and WebSocket switching | 2026-01-18 |
