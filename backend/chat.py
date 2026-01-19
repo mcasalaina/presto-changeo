@@ -5,6 +5,7 @@ Handles chat messages and streams LLM responses via WebSocket.
 import json
 import logging
 import os
+import re
 from typing import Any
 
 from fastapi import WebSocket
@@ -13,20 +14,14 @@ from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessa
 
 from auth import get_inference_client
 from tools import TOOL_DEFINITIONS, execute_tool
+from modes import get_mode, get_current_mode, set_current_mode
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a helpful banking assistant for a digital banking dashboard. You help customers with their accounts, transactions, and financial questions.
-
-Keep responses clear, professional, and concise. Speak naturally like a friendly bank representative.
-
-You have access to visualization tools to display data in the dashboard:
-- show_chart: Display charts (line, bar, pie, area) with data points
-- show_metrics: Display key metrics/KPIs in the metrics panel
-
-IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing. For example: "Here's your checking account balance over the last 6 months:" followed by the chart. Never call a tool without also providing explanatory text to the user."""
+# NOTE: System prompt is now dynamic, sourced from get_current_mode().system_prompt
+# Old hardcoded prompt removed in favor of mode-specific prompts in modes.py
 
 # Conversation history per connection (simple in-memory storage)
 # In production, this would be session-based
@@ -51,6 +46,34 @@ def clear_history() -> None:
     _conversation_history.clear()
 
 
+def detect_mode_switch(text: str) -> str | None:
+    """
+    Detect if the user is requesting a mode switch.
+    Returns the mode ID if detected, None otherwise.
+
+    Patterns matched:
+    - "Presto-Change-O, you're a bank"
+    - "presto change o youre a healthcare provider"
+    - "Presto-Change-O, you're an insurance company"
+    """
+    # Normalize: lowercase, remove punctuation except spaces
+    normalized = re.sub(r"[^\w\s]", "", text.lower())
+
+    # Check for the trigger phrase (handles "presto-change-o", "presto change o", "prestochangeo")
+    if "presto change o" not in normalized and "prestochangeo" not in normalized:
+        return None
+
+    # Look for industry keywords
+    if any(word in normalized for word in ["bank", "banking", "financial"]):
+        return "banking"
+    if any(word in normalized for word in ["insurance", "insurer", "policy"]):
+        return "insurance"
+    if any(word in normalized for word in ["health", "healthcare", "medical", "hospital", "doctor"]):
+        return "healthcare"
+
+    return None
+
+
 async def handle_chat_message(text: str, websocket: WebSocket) -> None:
     """
     Handle a chat message by calling Azure LLM and streaming the response.
@@ -67,6 +90,48 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
     """
     logger.info(f"Handling chat message: {text[:100]}...")
 
+    # Check for mode switch command
+    new_mode_id = detect_mode_switch(text)
+    if new_mode_id:
+        new_mode = set_current_mode(new_mode_id)
+        if new_mode:
+            logger.info(f"Mode switched to: {new_mode.name}")
+
+            # Clear conversation history on mode switch
+            clear_history()
+
+            # Send mode_switch message to frontend
+            await websocket.send_text(json.dumps({
+                "type": "mode_switch",
+                "payload": {
+                    "mode": {
+                        "id": new_mode.id,
+                        "name": new_mode.name,
+                        "theme": new_mode.theme.model_dump(),
+                        "tabs": [tab.model_dump() for tab in new_mode.tabs],
+                        "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
+                    }
+                }
+            }))
+
+            # Notify frontend that response is starting
+            await websocket.send_text(json.dumps({
+                "type": "chat_start",
+                "payload": {}
+            }))
+
+            # Send a welcome message for the new mode
+            welcome = f"Presto-Change-O! I'm now your {new_mode.name} assistant. How can I help you today?"
+            await websocket.send_text(json.dumps({
+                "type": "chat_chunk",
+                "payload": {"text": welcome, "done": False}
+            }))
+            await websocket.send_text(json.dumps({
+                "type": "chat_chunk",
+                "payload": {"text": "", "done": True}
+            }))
+            return
+
     # Notify frontend that response is starting
     await websocket.send_text(json.dumps({
         "type": "chat_start",
@@ -80,8 +145,9 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
         # Add user message to history
         add_to_history("user", text)
 
-        # Build messages with conversation history
-        messages = [SystemMessage(content=SYSTEM_PROMPT)]
+        # Build messages with conversation history using current mode's system prompt
+        current_mode = get_current_mode()
+        messages = [SystemMessage(content=current_mode.system_prompt)]
         for msg in get_conversation_history():
             if msg["role"] == "user":
                 messages.append(UserMessage(content=msg["content"]))
