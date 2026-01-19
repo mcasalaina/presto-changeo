@@ -26,7 +26,7 @@ You have access to visualization tools to display data in the dashboard:
 - show_chart: Display charts (line, bar, pie, area) with data points
 - show_metrics: Display key metrics/KPIs in the metrics panel
 
-When users ask to see data visually or want statistics, use these tools to render visualizations. You can still provide text explanations alongside the visualizations."""
+IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing. For example: "Here's your checking account balance over the last 6 months:" followed by the chart. Never call a tool without also providing explanatory text to the user."""
 
 # Conversation history per connection (simple in-memory storage)
 # In production, this would be session-based

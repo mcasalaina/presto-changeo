@@ -47,7 +47,13 @@ function App() {
     } else if (message.type === 'chat_chunk') {
       const { text, done } = message.payload as { text: string; done: boolean }
       if (done) {
-        // Streaming complete
+        // Streaming complete - remove empty messages (when AI only used tools without text)
+        const currentId = streamingIdRef.current
+        if (currentId) {
+          setMessages(prev => prev.filter(msg =>
+            msg.id !== currentId || msg.content.trim() !== ''
+          ))
+        }
         setIsTyping(false)
         streamingIdRef.current = null
       } else if (text && streamingIdRef.current) {
