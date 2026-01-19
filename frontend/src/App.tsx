@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { TypingIndicator } from './components/TypingIndicator'
+import { Dashboard } from './components/Dashboard'
 import type { ConnectionState, WebSocketMessage } from './lib/websocket'
 import './App.css'
 
@@ -180,14 +181,7 @@ function App() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
-        <div className="visualization-area">
-          <div className="viz-content">
-            <div className="viz-icon">📊</div>
-            <h2>Welcome</h2>
-            <p>Say "Presto-Change-O, you're a bank" to transform this interface.</p>
-            <p className="viz-hint">Charts and data will appear here based on your queries.</p>
-          </div>
-        </div>
+        <Dashboard />
 
         <nav className="bottom-tabs">
           {tabs.map(tab => (
