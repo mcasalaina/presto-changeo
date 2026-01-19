@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-15)
 ## Current Position
 
 Phase: 6 of 8 (Voice)
-Plan: 1 of ? complete in phase
+Plan: 2 of 3 complete in phase
 Status: In progress
-Last activity: 2026-01-19 - Completed 06-02-PLAN.md (Frontend Voice Infrastructure)
+Last activity: 2026-01-18 - Completed 06-01-PLAN.md (Voice Backend Infrastructure)
 
-Progress: [######----] ~65%
+Progress: [#######---] ~73%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: ~5.6 minutes
-- Total execution time: ~83 minutes
+- Total plans completed: 14
+- Average duration: ~6.3 minutes
+- Total execution time: ~88 minutes
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [######----] ~65%
 | 3. Dashboard | 3/3 | ~20 min | ~6.5 min |
 | 4. Mode System | 3/3 | ~14 min | ~4.7 min |
 | 5. Persona | 2/2 | ~32 min | ~16 min |
-| 6. Voice | 1/? | ~4 min | ~4 min |
+| 6. Voice | 2/3 | ~9 min | ~4.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-02 (~4m), 05-02 (~25m), 05-01 (~7m), 04-03 (~8m), 04-02 (~3m)
-- Trend: Voice frontend infrastructure implemented quickly
+- Last 5 plans: 06-01 (~5m), 06-02 (~4m), 05-02 (~25m), 05-01 (~7m), 04-03 (~8m)
+- Trend: Voice backend infrastructure completed quickly
 
 ## Accumulated Context
 
@@ -73,6 +73,9 @@ Recent decisions affecting current work:
 | 05-01 | Faker seed_instance() not class-level Faker.seed() | Multi-session isolation for concurrent users |
 | 05-01 | Module-level _current_persona state | Matches conversation_history pattern for simplicity |
 | 05-01 | Fixed demo-session seed for MVP | TODO: derive from WebSocket connection ID in production |
+| 06-01 | Raw websockets library over openai realtime client | Azure auth incompatibility with openai library |
+| 06-01 | Bidirectional relay pattern | Backend maintains connection to gpt-realtime, relays audio |
+| 06-01 | server_vad with 500ms silence detection | Natural conversation flow without twitchy detection |
 | 06-02 | ScriptProcessorNode over AudioWorklet | Simpler implementation for MVP, widely supported |
 | 06-02 | 500ms timeout for isSpeaking detection | Balances responsiveness with avoiding UI flicker |
 | 06-02 | 24kHz sample rate for audio | Matches gpt-realtime requirements |
@@ -87,8 +90,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-19
-Stopped at: Completed 06-02-PLAN.md (Frontend Voice Infrastructure)
+Last session: 2026-01-18
+Stopped at: Completed 06-01-PLAN.md (Voice Backend Infrastructure)
 Resume file: None
 
 ## Completed Plans
@@ -106,4 +109,5 @@ Resume file: None
 | 04-02 | Pre-built modes with Presto-Change-O detection and WebSocket switching | 2026-01-18 |
 | 04-03 | React ModeContext integration with dynamic tabs and theming | 2026-01-19 |
 | 05-01 | Faker-based seeded persona generation with AI system prompt integration | 2026-01-19 |
+| 06-01 | gpt-realtime WebSocket handler with bidirectional audio relay and tool calling | 2026-01-18 |
 | 06-02 | useVoice hook with mic capture, WebSocket audio streaming, and playback queue | 2026-01-19 |
