@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
+import { useVoice } from './hooks/useVoice'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
 import { ChartRenderer } from './components/ChartRenderer'
 import { PersonaCard } from './components/PersonaCard'
+import { VoiceToggle } from './components/VoiceToggle'
 import { ModeProvider, useMode } from './context/ModeContext'
 import type { Mode, Persona } from './types/mode'
 import type { Metric } from './components/MetricsPanel'
 import type { ConnectionState, WebSocketMessage } from './lib/websocket'
+import { getMetricsFromPersona } from './lib/personaMetrics'
 import './App.css'
 
 interface ChatMessage {
@@ -35,6 +38,55 @@ function AppContent() {
   const [persona, setPersona] = useState<Persona>(null)
   const streamingIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Voice hook for voice mode integration
+  const {
+    isEnabled: voiceEnabled,
+    isMuted: voiceMuted,
+    isListening,
+    isSpeaking,
+    status: voiceStatus,
+    enable: enableVoice,
+    disable: disableVoice,
+    toggleMute: toggleVoiceMute
+  } = useVoice({
+    onTranscript: (role, text) => {
+      // Add transcript as chat message for display
+      if (text.trim()) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role,
+          content: text,
+          timestamp: new Date()
+        }])
+      }
+    },
+    onToolResult: (tool, result) => {
+      // Reuse existing tool result handling (chart rendering)
+      if (tool === 'show_chart') {
+        const chartResult = result as {
+          chart_type: 'line' | 'bar' | 'pie' | 'area'
+          title: string
+          data: Array<{ label: string; value: number }>
+        }
+        setVisualization(
+          <ChartRenderer
+            chartType={chartResult.chart_type}
+            title={chartResult.title}
+            data={chartResult.data}
+          />
+        )
+      } else if (tool === 'show_metrics') {
+        const metricsResult = result as {
+          metrics: Array<{ label: string; value: string | number; unit?: string }>
+        }
+        setDashboardMetrics(metricsResult.metrics)
+      }
+    },
+    onError: (error) => {
+      console.error('Voice error:', error)
+    }
+  })
 
   // Handle incoming WebSocket messages via callback (avoids state batching issues)
   const handleMessage = useCallback((message: WebSocketMessage) => {
@@ -143,13 +195,16 @@ function AppContent() {
         defaultMetrics: payload.mode.defaultMetrics,
       }
       setMode(newMode)
-      // Update metrics to new mode defaults
-      setDashboardMetrics(newMode.defaultMetrics)
       // Clear visualization on mode switch
       setVisualization(null)
-      // Update persona if provided
+      // Update persona and derive metrics from persona data for consistency
       if (payload.persona) {
         setPersona(payload.persona)
+        // Use persona-derived metrics so dashboard matches PersonaCard
+        setDashboardMetrics(getMetricsFromPersona(payload.persona, newMode.id))
+      } else {
+        // Fallback to static defaults if no persona
+        setDashboardMetrics(newMode.defaultMetrics)
       }
       // Clear messages and add welcome message (backend will send welcome text via chat_chunk)
       setMessages([])
@@ -215,6 +270,16 @@ function AppContent() {
         <header className="chat-header">
           <span className="header-title">Chat Assistant</span>
           <div className="header-actions">
+            <VoiceToggle
+              isEnabled={voiceEnabled}
+              isMuted={voiceMuted}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              status={voiceStatus}
+              onEnable={enableVoice}
+              onDisable={disableVoice}
+              onToggleMute={toggleVoiceMute}
+            />
             <button className="new-chat-button" onClick={handleNewChat} title="New Chat">
               +
             </button>
@@ -243,11 +308,11 @@ function AppContent() {
           <input
             type="text"
             className="chat-input"
-            placeholder="Chat with me here..."
+            placeholder={voiceEnabled ? "Voice mode active - speak to chat" : "Chat with me here..."}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyPress}
-            disabled={status !== 'connected'}
+            disabled={status !== 'connected' || voiceEnabled}
           />
           <button
             className="send-button"
