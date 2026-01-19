@@ -14,6 +14,7 @@ from azure.ai.inference.models import SystemMessage, UserMessage
 
 from auth import get_inference_client
 from chat import handle_chat_message, clear_history
+from voice import handle_voice_session
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Server running on http://localhost:8000")
     logger.info("WebSocket endpoint available at ws://localhost:8000/ws")
+    logger.info("Voice WebSocket endpoint available at ws://localhost:8000/voice")
     yield
     logger.info("Presto-Change-O backend shutting down...")
 
@@ -151,3 +153,16 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         await websocket.close(code=1011, reason=str(e))
+
+
+@app.websocket("/voice")
+async def voice_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for voice interactions with gpt-realtime."""
+    await websocket.accept()
+    logger.info("Voice WebSocket connection established")
+    try:
+        await handle_voice_session(websocket)
+    except WebSocketDisconnect:
+        logger.info("Voice WebSocket connection closed")
+    except Exception as e:
+        logger.error(f"Voice WebSocket error: {e}")
