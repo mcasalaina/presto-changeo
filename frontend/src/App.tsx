@@ -37,6 +37,8 @@ function AppContent() {
   const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(mode.defaultMetrics)
   const [persona, setPersona] = useState<Persona>(null)
   const streamingIdRef = useRef<string | null>(null)
+  const voiceUserIdRef = useRef<string | null>(null)
+  const voiceAssistantIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Voice hook for voice mode integration
@@ -51,15 +53,37 @@ function AppContent() {
     toggleMute: toggleVoiceMute
   } = useVoice({
     onTranscript: (role, text) => {
-      // Add transcript as chat message for display
-      if (text.trim()) {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+      // Accumulate transcript deltas into a single message per role
+      // Track user and assistant separately so they don't interrupt each other
+      if (!text) return
+
+      const idRef = role === 'user' ? voiceUserIdRef : voiceAssistantIdRef
+
+      setMessages(prev => {
+        // Check ref inside callback to avoid race conditions
+        const currentId = idRef.current
+        const existingMsg = currentId ? prev.find(m => m.id === currentId) : null
+
+        if (existingMsg && existingMsg.role === role) {
+          // Update existing message - replace placeholder or append
+          return prev.map(msg => {
+            if (msg.id !== currentId) return msg
+            // If placeholder "...", replace it; otherwise append
+            const newContent = msg.content === '...' ? text : msg.content + text
+            return { ...msg, content: newContent }
+          })
+        }
+
+        // Start a new message for this role - set ref immediately before return
+        const newId = Date.now().toString()
+        idRef.current = newId
+        return [...prev, {
+          id: newId,
           role,
           content: text,
           timestamp: new Date()
-        }])
-      }
+        }]
+      })
     },
     onToolResult: (tool, result) => {
       // Reuse existing tool result handling (chart rendering)
@@ -85,6 +109,25 @@ function AppContent() {
     },
     onError: (error) => {
       console.error('Voice error:', error)
+    },
+    onInterrupt: () => {
+      // User started speaking - reset assistant message ID so next response is new
+      voiceAssistantIdRef.current = null
+    },
+    onUserSpeechEnd: () => {
+      // User stopped speaking - reset user message ID so next utterance is new bubble
+      voiceUserIdRef.current = null
+    },
+    onUserSpeechStart: () => {
+      // Create placeholder for user message to ensure correct ordering
+      const newId = Date.now().toString()
+      voiceUserIdRef.current = newId
+      setMessages(prev => [...prev, {
+        id: newId,
+        role: 'user',
+        content: '...',  // Placeholder, will be replaced by transcript
+        timestamp: new Date()
+      }])
     }
   })
 

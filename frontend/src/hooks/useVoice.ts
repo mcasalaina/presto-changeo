@@ -11,6 +11,9 @@ export interface UseVoiceOptions {
   onTranscript?: (role: 'user' | 'assistant', text: string) => void
   onToolResult?: (tool: string, result: Record<string, unknown>) => void
   onError?: (error: string) => void
+  onInterrupt?: () => void  // Called when user starts speaking (interrupts assistant)
+  onUserSpeechEnd?: () => void  // Called when user stops speaking (end of utterance)
+  onUserSpeechStart?: () => void  // Called when user starts speaking (create placeholder)
 }
 
 export interface UseVoiceReturn {
@@ -40,7 +43,7 @@ interface VoiceMessage {
  * @returns Voice state and control functions
  */
 export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
-  const { onTranscript, onToolResult, onError } = options
+  const { onTranscript, onToolResult, onError, onInterrupt, onUserSpeechEnd, onUserSpeechStart } = options
 
   // State
   const [isEnabled, setIsEnabled] = useState(false)
@@ -61,9 +64,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const isMutedRef = useRef(false)
   const speakingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Audio playback queue
+  // Audio playback queue and scheduling
   const audioQueueRef = useRef<Float32Array[]>([])
   const isPlayingRef = useRef(false)
+  const nextPlayTimeRef = useRef(0)  // Scheduled time for next chunk
 
   // Keep refs in sync with state
   isMutedRef.current = isMuted
@@ -72,39 +76,74 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const onTranscriptRef = useRef(onTranscript)
   const onToolResultRef = useRef(onToolResult)
   const onErrorRef = useRef(onError)
+  const onInterruptRef = useRef(onInterrupt)
+  const onUserSpeechEndRef = useRef(onUserSpeechEnd)
+  const onUserSpeechStartRef = useRef(onUserSpeechStart)
   onTranscriptRef.current = onTranscript
   onToolResultRef.current = onToolResult
   onErrorRef.current = onError
+  onInterruptRef.current = onInterrupt
+  onUserSpeechEndRef.current = onUserSpeechEnd
+  onUserSpeechStartRef.current = onUserSpeechStart
+
+  // Track current audio source for interruption
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
   /**
-   * Play queued audio chunks sequentially
+   * Stop all audio playback and clear queue (for interruption)
+   */
+  const stopPlayback = useCallback(() => {
+    // Stop currently playing audio
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.stop()
+      } catch {
+        // Already stopped
+      }
+      currentSourceRef.current = null
+    }
+    // Clear queue and reset scheduling
+    audioQueueRef.current = []
+    nextPlayTimeRef.current = 0
+    isPlayingRef.current = false
+    setIsSpeaking(false)
+  }, [])
+
+  /**
+   * Play queued audio chunks with precise scheduling for gapless playback
    */
   const playNextAudioChunk = useCallback(() => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
-      return
-    }
-
     const playbackContext = playbackContextRef.current
     if (!playbackContext || playbackContext.state === 'closed') {
       return
     }
 
-    isPlayingRef.current = true
-    const float32 = audioQueueRef.current.shift()!
+    // Process all queued chunks and schedule them
+    while (audioQueueRef.current.length > 0) {
+      const float32 = audioQueueRef.current.shift()!
 
-    // Create audio buffer from Float32Array
-    const buffer = playbackContext.createBuffer(1, float32.length, VOICE_SAMPLE_RATE)
-    buffer.getChannelData(0).set(float32)
+      // Create audio buffer from Float32Array
+      const buffer = playbackContext.createBuffer(1, float32.length, VOICE_SAMPLE_RATE)
+      buffer.getChannelData(0).set(float32)
 
-    // Create source node and play
-    const source = playbackContext.createBufferSource()
-    source.buffer = buffer
-    source.connect(playbackContext.destination)
-    source.onended = () => {
-      isPlayingRef.current = false
-      playNextAudioChunk() // Play next chunk if available
+      // Calculate duration of this chunk
+      const duration = float32.length / VOICE_SAMPLE_RATE
+
+      // Schedule to play at the right time (gapless)
+      const now = playbackContext.currentTime
+      const startTime = Math.max(now, nextPlayTimeRef.current)
+
+      // Create source node and schedule
+      const source = playbackContext.createBufferSource()
+      currentSourceRef.current = source
+      source.buffer = buffer
+      source.connect(playbackContext.destination)
+      source.start(startTime)
+
+      // Update next play time for seamless scheduling
+      nextPlayTimeRef.current = startTime + duration
+      isPlayingRef.current = true
     }
-    source.start()
   }, [])
 
   /**
@@ -127,10 +166,15 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
         case 'speech_started':
           setIsListening(true)
+          // Stop assistant audio playback when user starts speaking (interruption)
+          stopPlayback()
+          onInterruptRef.current?.()
+          onUserSpeechStartRef.current?.()
           break
 
         case 'speech_stopped':
           setIsListening(false)
+          onUserSpeechEndRef.current?.()
           break
 
         case 'audio': {
@@ -172,7 +216,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     } catch (err) {
       console.warn('Failed to parse voice message:', err)
     }
-  }, [playNextAudioChunk])
+  }, [playNextAudioChunk, stopPlayback])
 
   /**
    * Connect to voice WebSocket

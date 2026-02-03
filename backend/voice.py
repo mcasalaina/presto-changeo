@@ -14,7 +14,7 @@ from fastapi import WebSocket
 from auth import get_azure_credential
 from tools import TOOL_DEFINITIONS, execute_tool
 from modes import get_current_mode
-from chat import build_system_prompt, _current_persona
+from chat import build_system_prompt, ensure_persona
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,12 @@ async def handle_voice_session(websocket: WebSocket) -> None:
         token = credential.get_token("https://cognitiveservices.azure.com/.default")
 
         # Build gpt-realtime WebSocket URI
-        # Format: wss://{endpoint}/openai/realtime?api-version={version}&deployment={deployment}
-        # Extract host from endpoint (remove https:// prefix)
+        # Format: wss://{host}/openai/realtime?api-version={version}&deployment={deployment}
+        # Extract host from endpoint (remove protocol and /models path)
         endpoint_host = AZURE_ENDPOINT.replace("https://", "").replace("http://", "").rstrip("/")
+        # Remove /models suffix if present (chat endpoint has it, realtime doesn't use it)
+        if endpoint_host.endswith("/models"):
+            endpoint_host = endpoint_host[:-7]
         realtime_uri = f"wss://{endpoint_host}/openai/realtime?api-version={REALTIME_API_VERSION}&deployment={REALTIME_DEPLOYMENT}"
 
         logger.info(f"Connecting to gpt-realtime at: {realtime_uri}")
@@ -91,13 +94,14 @@ async def handle_voice_session(websocket: WebSocket) -> None:
 
         # Send session configuration
         current_mode = get_current_mode()
-        system_prompt = build_system_prompt(current_mode, _current_persona)
+        persona = ensure_persona(current_mode.id)
+        system_prompt = build_system_prompt(current_mode, persona)
 
         session_config = {
             "type": "session.update",
             "session": {
                 "modalities": ["text", "audio"],
-                "voice": "alloy",
+                "voice": "verse",
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
                 "input_audio_transcription": {

@@ -62,6 +62,16 @@ def clear_history() -> None:
     _conversation_history.clear()
 
 
+def ensure_persona(mode_id: str) -> dict:
+    """Ensure persona is generated for the given mode. Returns the persona."""
+    global _current_persona
+    if not _current_persona:
+        from persona import generate_persona
+        _current_persona = generate_persona(mode_id, get_session_seed())
+        logger.info(f"Generated initial persona: {_current_persona.get('name', 'Unknown')}")
+    return _current_persona
+
+
 def build_system_prompt(mode: Mode, persona: dict) -> str:
     """
     Build system prompt with persona context for AI responses.
@@ -79,6 +89,7 @@ def build_system_prompt(mode: Mode, persona: dict) -> str:
 
     # Build persona context based on mode type
     if mode.id == "banking":
+        transactions = persona.get('recent_transactions', [])
         persona_context = f"""
 Current Customer Profile:
 - Name: {persona.get('name')}
@@ -86,28 +97,47 @@ Current Customer Profile:
 - Checking Balance: ${persona.get('checking_balance', 0):,.2f}
 - Savings Balance: ${persona.get('savings_balance', 0):,.2f}
 - Credit Score: {persona.get('credit_score')}
+- Credit Limit: ${persona.get('credit_limit', 0):,.2f}
+- Recent Transactions: {len(transactions)}
 
-Reference this customer's information naturally in your responses."""
+Use these EXACT values when creating charts or responding about balances."""
     elif mode.id == "insurance":
+        policies = persona.get('active_policies', [])
+        policy_details = "\n".join([
+            f"  - {p.get('type')}: ${p.get('coverage', 0):,.2f} coverage, ${p.get('premium', 0):,.2f}/mo premium"
+            for p in policies
+        ])
+        pending_claims = len([c for c in persona.get('claims_history', []) if c.get('status') == 'pending'])
         persona_context = f"""
 Current Customer Profile:
 - Name: {persona.get('name')}
 - Member Since: {persona.get('member_since')}
-- Active Policies: {len(persona.get('active_policies', []))}
+- Active Policies: {len(policies)}
 - Total Coverage: ${persona.get('total_coverage', 0):,.2f}
 - Monthly Premium: ${persona.get('monthly_premium', 0):,.2f}
+- Pending Claims: {pending_claims}
 
-Reference this customer's information naturally in your responses."""
+Policy Breakdown:
+{policy_details}
+
+Use these EXACT values when creating charts or responding about coverage."""
     elif mode.id == "healthcare":
+        appointments = persona.get('upcoming_appointments', [])
+        prescriptions = persona.get('active_prescriptions', [])
         persona_context = f"""
 Current Patient Profile:
 - Name: {persona.get('name')}
 - Member ID: {persona.get('member_id')}
 - Primary Care Provider: {persona.get('primary_care_provider')}
-- Deductible Progress: ${persona.get('deductible_met', 0):,.2f} of ${persona.get('deductible', 0):,.2f}
-- Active Prescriptions: {len(persona.get('active_prescriptions', []))}
+- Plan Name: {persona.get('plan_name')}
+- Deductible: ${persona.get('deductible', 0):,.2f}
+- Deductible Met: ${persona.get('deductible_met', 0):,.2f}
+- Out-of-Pocket Max: ${persona.get('out_of_pocket_max', 0):,.2f}
+- Out-of-Pocket Spent: ${persona.get('out_of_pocket_spent', 0):,.2f}
+- Upcoming Appointments: {len(appointments)}
+- Active Prescriptions: {len(prescriptions)}
 
-Reference this patient's information naturally in your responses."""
+Use these EXACT values when creating charts or responding about health data."""
     else:
         persona_context = ""
 
@@ -260,7 +290,12 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                 # Handle tool calls (streamed incrementally)
                 if choice.delta and choice.delta.tool_calls:
                     for tool_call in choice.delta.tool_calls:
-                        idx = tool_call.index if hasattr(tool_call, 'index') else 0
+                        # Get index - could be attribute or None
+                        idx = getattr(tool_call, 'index', None)
+                        if idx is None:
+                            idx = 0
+
+                        logger.debug(f"Tool call chunk: idx={idx}, id={getattr(tool_call, 'id', None)}, name={getattr(tool_call.function, 'name', None) if hasattr(tool_call, 'function') else None}")
 
                         # Initialize tool call entry if new
                         if idx not in tool_calls:
@@ -275,7 +310,11 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                             tool_calls[idx]["id"] = tool_call.id
                         if hasattr(tool_call, 'function'):
                             if hasattr(tool_call.function, 'name') and tool_call.function.name:
-                                tool_calls[idx]["name"] = tool_call.function.name
+                                old_name = tool_calls[idx]["name"]
+                                new_name = tool_call.function.name
+                                if old_name and old_name != new_name:
+                                    logger.warning(f"Tool name change at idx {idx}: {old_name} -> {new_name}")
+                                tool_calls[idx]["name"] = new_name
                             if hasattr(tool_call.function, 'arguments') and tool_call.function.arguments:
                                 tool_calls[idx]["arguments"] += tool_call.function.arguments
 
@@ -284,6 +323,7 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
             add_to_history("assistant", full_response)
 
         # Process completed tool calls
+        logger.info(f"Processing {len(tool_calls)} tool call(s): {[(idx, tc['name']) for idx, tc in tool_calls.items()]}")
         for idx in sorted(tool_calls.keys()):
             tool_call = tool_calls[idx]
             tool_name = tool_call["name"]
@@ -291,6 +331,8 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
 
             if tool_name and arguments_str:
                 try:
+                    # Strip whitespace and try to parse
+                    arguments_str = arguments_str.strip()
                     arguments = json.loads(arguments_str)
                     logger.info(f"Executing tool: {tool_name} with args: {arguments}")
 
@@ -310,6 +352,44 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
 
                 except json.JSONDecodeError as e:
                     logger.error(f"Failed to parse tool arguments: {e}")
+                    logger.error(f"Raw arguments string: {arguments_str[:500]}")
+                    # Try to extract multiple JSON objects (tool calls may be concatenated)
+                    try:
+                        decoder = json.JSONDecoder()
+                        pos = 0
+                        json_objects = []
+                        while pos < len(arguments_str):
+                            # Skip whitespace
+                            while pos < len(arguments_str) and arguments_str[pos] in ' \t\n\r':
+                                pos += 1
+                            if pos >= len(arguments_str):
+                                break
+                            obj, end_pos = decoder.raw_decode(arguments_str, pos)
+                            json_objects.append(obj)
+                            pos = end_pos
+
+                        logger.info(f"Recovered {len(json_objects)} JSON object(s) from concatenated args")
+
+                        # Execute each based on structure (infer tool from content)
+                        for obj in json_objects:
+                            if "metrics" in obj:
+                                inferred_tool = "show_metrics"
+                            elif "chart_type" in obj:
+                                inferred_tool = "show_chart"
+                            else:
+                                inferred_tool = tool_name  # fallback to declared name
+
+                            logger.info(f"Executing inferred tool: {inferred_tool}")
+                            result = execute_tool(inferred_tool, obj)
+                            await websocket.send_text(json.dumps({
+                                "type": "tool_result",
+                                "payload": {
+                                    "tool": inferred_tool,
+                                    "result": result
+                                }
+                            }))
+                    except Exception as e2:
+                        logger.error(f"Recovery also failed: {e2}")
 
         # Signal completion
         await websocket.send_text(json.dumps({
