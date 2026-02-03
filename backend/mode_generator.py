@@ -11,9 +11,9 @@ from typing import Optional
 from openai import AsyncAzureOpenAI
 from azure.identity import AzureCliCredential, InteractiveBrowserCredential, ChainedTokenCredential
 
-from backend.generation_schemas import GeneratedModeConfig
-from backend.color_utils import derive_theme_palette
-from backend.modes import Mode, ModeTheme, ModeTab, ModeMetric
+from generation_schemas import GeneratedModeConfig
+from color_utils import derive_theme_palette
+from modes import Mode, ModeTheme, ModeTab, ModeMetric
 
 logger = logging.getLogger(__name__)
 

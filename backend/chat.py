@@ -15,8 +15,9 @@ from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessa
 
 from auth import get_inference_client
 from tools import TOOL_DEFINITIONS, execute_tool
-from modes import Mode, get_mode, get_current_mode, set_current_mode
+from modes import Mode, get_mode, get_current_mode, set_current_mode, store_generated_mode
 from persona import generate_persona
+from mode_generator import generate_mode
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
@@ -139,20 +140,28 @@ Current Patient Profile:
 
 Use these EXACT values when creating charts or responding about health data."""
     else:
-        persona_context = ""
+        # Generic persona context for dynamically generated modes
+        if persona.get('name'):
+            persona_context = f"""
+Current Customer Profile:
+- Name: {persona.get('name')}
+- Customer Since: {persona.get('customer_since', 'Unknown')}
+- Account Value: ${persona.get('account_value', 0):,.2f}
+- Recent Activity: {persona.get('recent_activity_count', 0)} items
+- Loyalty Points: {persona.get('loyalty_points', 0):,}
+- Status: {persona.get('status', 'Standard')}
+
+Use these values when creating charts or responding about customer data."""
+        else:
+            persona_context = ""
 
     return f"{base}\n\n{persona_context}" if persona_context else base
 
 
-def detect_mode_switch(text: str) -> str | None:
+def _extract_industry_from_trigger(text: str) -> str | None:
     """
-    Detect if the user is requesting a mode switch.
-    Returns the mode ID if detected, None otherwise.
-
-    Patterns matched:
-    - "Presto-Change-O, you're a bank"
-    - "presto change o youre a healthcare provider"
-    - "Presto-Change-O, you're an insurance company"
+    Extract the industry name from a Presto-Change-O trigger phrase.
+    Returns the raw industry name (e.g., "florist", "pet store") or None if no trigger.
     """
     # Normalize: lowercase, remove punctuation except spaces
     normalized = re.sub(r"[^\w\s]", "", text.lower())
@@ -161,13 +170,57 @@ def detect_mode_switch(text: str) -> str | None:
     if "presto change o" not in normalized and "prestochangeo" not in normalized:
         return None
 
-    # Look for industry keywords
-    if any(word in normalized for word in ["bank", "banking", "financial"]):
-        return "banking"
-    if any(word in normalized for word in ["insurance", "insurer", "policy"]):
-        return "insurance"
-    if any(word in normalized for word in ["health", "healthcare", "medical", "hospital", "doctor"]):
-        return "healthcare"
+    # Extract what comes after "youre a" or "youre an"
+    # Pattern: "presto change o youre a/an [industry]"
+    match = re.search(r"youre\s+(?:a|an)\s+(.+)", normalized)
+    if match:
+        return match.group(1).strip()
+
+    return None
+
+
+async def detect_mode_switch(text: str) -> Mode | None:
+    """
+    Detect if the user is requesting a mode switch.
+    Returns the Mode object if detected, None otherwise.
+
+    For pre-built modes (banking, insurance, healthcare), returns immediately.
+    For unknown industries, generates a new mode dynamically using the LLM.
+
+    Patterns matched:
+    - "Presto-Change-O, you're a bank" -> banking mode (pre-built)
+    - "Presto-Change-O, you're a florist" -> dynamically generated
+    """
+    industry = _extract_industry_from_trigger(text)
+    if not industry:
+        return None
+
+    # Check for pre-built mode keywords first
+    if any(word in industry for word in ["bank", "banking", "financial"]):
+        return get_mode("banking")
+    if any(word in industry for word in ["insurance", "insurer", "policy"]):
+        return get_mode("insurance")
+    if any(word in industry for word in ["health", "healthcare", "medical", "hospital", "doctor"]):
+        return get_mode("healthcare")
+
+    # Check if we already have this mode (pre-built or previously generated)
+    # Normalize industry to mode_id format (spaces to underscores)
+    mode_id = industry.replace(" ", "_")
+    existing_mode = get_mode(mode_id)
+    if existing_mode:
+        logger.info(f"Found existing mode for '{industry}': {existing_mode.name}")
+        return existing_mode
+
+    # Try to generate a new mode for this industry
+    try:
+        logger.info(f"Generating mode for unknown industry: {industry}")
+        new_mode = await generate_mode(industry)
+        if new_mode:
+            store_generated_mode(new_mode)
+            logger.info(f"Generated and stored mode: {new_mode.name} (id={new_mode.id})")
+            return new_mode
+    except Exception as e:
+        logger.error(f"Mode generation failed for '{industry}': {e}")
 
     return None
 
@@ -190,51 +243,51 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
 
     # Check for mode switch command
     global _current_persona
-    new_mode_id = detect_mode_switch(text)
-    if new_mode_id:
-        new_mode = set_current_mode(new_mode_id)
-        if new_mode:
-            logger.info(f"Mode switched to: {new_mode.name}")
+    new_mode = await detect_mode_switch(text)
+    if new_mode:
+        # Set current mode using the returned Mode object
+        set_current_mode(new_mode.id)
+        logger.info(f"Mode switched to: {new_mode.name}")
 
-            # Clear conversation history on mode switch
-            clear_history()
+        # Clear conversation history on mode switch
+        clear_history()
 
-            # Generate persona for the new mode
-            _current_persona = generate_persona(new_mode_id, get_session_seed())
-            logger.info(f"Generated persona: {_current_persona.get('name', 'Unknown')}")
+        # Generate persona for the new mode
+        _current_persona = generate_persona(new_mode.id, get_session_seed())
+        logger.info(f"Generated persona: {_current_persona.get('name', 'Unknown')}")
 
-            # Send mode_switch message to frontend with persona
-            await websocket.send_text(json.dumps({
-                "type": "mode_switch",
-                "payload": {
-                    "mode": {
-                        "id": new_mode.id,
-                        "name": new_mode.name,
-                        "theme": new_mode.theme.model_dump(),
-                        "tabs": [tab.model_dump() for tab in new_mode.tabs],
-                        "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
-                    },
-                    "persona": _current_persona
-                }
-            }))
+        # Send mode_switch message to frontend with persona
+        await websocket.send_text(json.dumps({
+            "type": "mode_switch",
+            "payload": {
+                "mode": {
+                    "id": new_mode.id,
+                    "name": new_mode.name,
+                    "theme": new_mode.theme.model_dump(),
+                    "tabs": [tab.model_dump() for tab in new_mode.tabs],
+                    "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
+                },
+                "persona": _current_persona
+            }
+        }))
 
-            # Notify frontend that response is starting
-            await websocket.send_text(json.dumps({
-                "type": "chat_start",
-                "payload": {}
-            }))
+        # Notify frontend that response is starting
+        await websocket.send_text(json.dumps({
+            "type": "chat_start",
+            "payload": {}
+        }))
 
-            # Send a welcome message for the new mode
-            welcome = f"Presto-Change-O! I'm now your {new_mode.name} assistant. How can I help you today?"
-            await websocket.send_text(json.dumps({
-                "type": "chat_chunk",
-                "payload": {"text": welcome, "done": False}
-            }))
-            await websocket.send_text(json.dumps({
-                "type": "chat_chunk",
-                "payload": {"text": "", "done": True}
-            }))
-            return
+        # Send a welcome message for the new mode
+        welcome = f"Presto-Change-O! I'm now your {new_mode.name} assistant. How can I help you today?"
+        await websocket.send_text(json.dumps({
+            "type": "chat_chunk",
+            "payload": {"text": welcome, "done": False}
+        }))
+        await websocket.send_text(json.dumps({
+            "type": "chat_chunk",
+            "payload": {"text": "", "done": True}
+        }))
+        return
 
     # Notify frontend that response is starting
     await websocket.send_text(json.dumps({
