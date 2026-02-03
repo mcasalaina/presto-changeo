@@ -64,7 +64,9 @@ You have access to visualization tools to display data in the dashboard:
 - show_chart: Display charts (line, bar, pie, area) with data points
 - show_metrics: Display key metrics/KPIs in the metrics panel
 
-IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.""",
+IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
+
+CRITICAL: When showing customer data in charts or responses, use ONLY the exact values from the Current Customer Profile. Never invent or approximate numbers.""",
         default_metrics=[
             ModeMetric(label="Account Balance", value="$24,856.42"),
             ModeMetric(label="Recent Transactions", value=12),
@@ -98,7 +100,9 @@ You have access to visualization tools to display data in the dashboard:
 - show_chart: Display charts (line, bar, pie, area) with data points
 - show_metrics: Display key metrics/KPIs in the metrics panel
 
-IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.""",
+IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
+
+CRITICAL: When showing customer data in charts or responses, use ONLY the exact values from the Current Customer Profile. Never invent or approximate numbers.""",
         default_metrics=[
             ModeMetric(label="Active Policies", value=3),
             ModeMetric(label="Total Coverage", value="$750,000"),
@@ -132,7 +136,9 @@ You have access to visualization tools to display data in the dashboard:
 - show_chart: Display charts (line, bar, pie, area) with data points
 - show_metrics: Display key metrics/KPIs in the metrics panel
 
-IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.""",
+IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
+
+CRITICAL: When showing patient data in charts or responses, use ONLY the exact values from the Current Patient Profile. Never invent or approximate numbers.""",
         default_metrics=[
             ModeMetric(label="Upcoming Appointments", value=2),
             ModeMetric(label="Active Prescriptions", value=4),

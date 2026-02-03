@@ -128,7 +128,7 @@ def generate_banking_persona(seed: int) -> BankingPersona:
     transactions.sort(key=lambda t: t.date, reverse=True)
 
     return BankingPersona(
-        name=fake.name(),
+        name="Marco Casalaina",
         member_since=str(fake.date_between(start_date="-15y", end_date="-1y").year),
         checking_balance=round(fake.pyfloat(min_value=500, max_value=15000), 2),
         savings_balance=round(fake.pyfloat(min_value=1000, max_value=50000), 2),
@@ -207,7 +207,7 @@ def generate_insurance_persona(seed: int) -> InsurancePersona:
         risk_score = fake.random_element(["medium", "high"])
 
     return InsurancePersona(
-        name=fake.name(),
+        name="Marco Casalaina",
         member_since=str(fake.date_between(start_date="-20y", end_date="-1y").year),
         active_policies=policies,
         claims_history=claims,
@@ -271,7 +271,7 @@ def generate_healthcare_persona(seed: int) -> HealthcarePersona:
     out_of_pocket_spent = round(fake.pyfloat(min_value=0, max_value=out_of_pocket_max * 0.6), 2)
 
     return HealthcarePersona(
-        name=fake.name(),
+        name="Marco Casalaina",
         member_id=fake.bothify("MBR-#########").upper(),
         date_of_birth=fake.date_of_birth(minimum_age=25, maximum_age=75).isoformat(),
         primary_care_provider=f"Dr. {fake.last_name()}",
