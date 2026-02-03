@@ -286,6 +286,47 @@ def generate_healthcare_persona(seed: int) -> HealthcarePersona:
 
 
 # =============================================================================
+# Generic Persona Generator
+# =============================================================================
+
+def generate_generic_persona(mode_id: str, mode_name: str, seed: int) -> dict:
+    """
+    Generate a generic persona for dynamically generated industries.
+    Uses mode name to customize the context but follows a generic structure.
+
+    Args:
+        mode_id: The mode identifier (e.g., "pet_store")
+        mode_name: Display name of the mode (e.g., "Pet Store")
+        seed: Deterministic seed for reproducible generation
+
+    Returns:
+        Dictionary with generic customer profile data
+    """
+    fake = Faker()
+    fake.seed_instance(seed)
+
+    # Generate a generic customer profile
+    name = fake.name()
+    member_since = fake.date_between(start_date='-5y', end_date='-1y').strftime('%B %Y')
+
+    # Generate some generic metrics that work for any business
+    # Use seed for consistency
+    account_value = round(fake.pyfloat(min_value=1000, max_value=50000), 2)
+    transactions_this_month = fake.random_int(min=5, max=30)
+    loyalty_points = fake.random_int(min=100, max=10000)
+
+    return {
+        "name": name,
+        "customer_since": member_since,
+        "account_value": account_value,
+        "recent_activity_count": transactions_this_month,
+        "loyalty_points": loyalty_points,
+        "status": fake.random_element(["Bronze", "Silver", "Gold", "Platinum"]),
+        "context_hint": f"This is a {mode_name} customer dashboard."
+    }
+
+
+# =============================================================================
 # Factory Function
 # =============================================================================
 
@@ -301,14 +342,15 @@ def generate_persona(mode_id: str, seed: int) -> dict:
     Generate industry-appropriate persona for mode.
 
     Args:
-        mode_id: The mode identifier ("banking", "insurance", "healthcare")
+        mode_id: The mode identifier ("banking", "insurance", "healthcare", or any dynamic mode)
         seed: Deterministic seed for reproducible generation
 
     Returns:
-        Dictionary representation of the persona, or empty dict for unknown mode
+        Dictionary representation of the persona
     """
     generator = PERSONA_GENERATORS.get(mode_id.lower())
     if generator:
         persona = generator(seed)
         return persona.model_dump()
-    return {}
+    # Fallback to generic persona for dynamically generated modes
+    return generate_generic_persona(mode_id, mode_id.replace('_', ' ').title(), seed)
