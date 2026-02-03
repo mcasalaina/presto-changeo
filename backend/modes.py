@@ -158,9 +158,31 @@ CHART PREFERENCE: For time-series data (anything "over time"), always use LINE c
 }
 
 
+# Storage for dynamically generated modes (session-level cache)
+_generated_modes: dict[str, Mode] = {}
+
+
+def store_generated_mode(mode: Mode) -> None:
+    """Store a dynamically generated mode for session reuse."""
+    _generated_modes[mode.id] = mode
+
+
+def get_generated_mode(mode_id: str) -> Mode | None:
+    """Get a dynamically generated mode by ID, or None if not found."""
+    return _generated_modes.get(mode_id.lower())
+
+
 def get_mode(mode_id: str) -> Mode | None:
-    """Get a mode configuration by ID."""
-    return MODES.get(mode_id.lower())
+    """
+    Get a mode configuration by ID.
+    Checks pre-built MODES first, then dynamically generated modes.
+    """
+    mode_key = mode_id.lower()
+    # Check pre-built modes first
+    if mode_key in MODES:
+        return MODES[mode_key]
+    # Then check dynamically generated modes
+    return _generated_modes.get(mode_key)
 
 
 def get_all_modes() -> list[Mode]:
