@@ -27,12 +27,13 @@ function AppContent() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m your Banking assistant. Say "Presto-Change-O, you\'re an insurance company" or "...you\'re a healthcare provider" to transform this interface!',
+      content: 'Hello! I\'m your assistant at Meridian Trust Bank. How can I help you with your finances today?',
       timestamp: new Date()
     }
   ])
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isTyping, setIsTyping] = useState(false)
+  const [modeGenerating, setModeGenerating] = useState<string | null>(null)
   const [visualization, setVisualization] = useState<React.ReactNode>(null)
   const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(mode.defaultMetrics)
   const [persona, setPersona] = useState<Persona>(null)
@@ -109,6 +110,59 @@ function AppContent() {
     },
     onError: (error) => {
       console.error('Voice error:', error)
+    },
+    onModeSwitch: (payload) => {
+      // Handle mode switch from voice - same logic as chat WebSocket handler
+      interface BackendModePayload {
+        mode: {
+          id: string
+          name: string
+          company_name: string
+          tagline: string
+          theme: {
+            primary: string
+            secondary: string
+            background: string
+            surface: string
+            text: string
+            text_muted: string
+          }
+          tabs: Array<{ id: string; label: string; icon: string }>
+          defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
+        }
+        persona?: Persona
+      }
+      const modePayload = payload as BackendModePayload
+      const newMode: Mode = {
+        id: modePayload.mode.id,
+        name: modePayload.mode.name,
+        companyName: modePayload.mode.company_name,
+        tagline: modePayload.mode.tagline,
+        theme: {
+          primary: modePayload.mode.theme.primary,
+          secondary: modePayload.mode.theme.secondary,
+          background: modePayload.mode.theme.background,
+          surface: modePayload.mode.theme.surface,
+          text: modePayload.mode.theme.text,
+          textMuted: modePayload.mode.theme.text_muted,
+        },
+        tabs: modePayload.mode.tabs,
+        systemPrompt: '',
+        defaultMetrics: modePayload.mode.defaultMetrics,
+      }
+      setMode(newMode)
+      setVisualization(null)
+      setModeGenerating(null)  // Clear loading indicator
+      if (modePayload.persona) {
+        setPersona(modePayload.persona)
+        setDashboardMetrics(getMetricsFromPersona(modePayload.persona, newMode.id))
+      } else {
+        setDashboardMetrics(newMode.defaultMetrics)
+      }
+      setMessages([])
+    },
+    onModeGenerating: (industry) => {
+      setModeGenerating(industry)
     },
     onInterrupt: () => {
       // User started speaking - reset assistant message ID so next response is new
@@ -208,13 +262,21 @@ function AppContent() {
         }
         setDashboardMetrics(metricsResult.metrics)
       }
+    } else if (message.type === 'mode_generating') {
+      // Show loading indicator while new mode is being generated
+      const payload = message.payload as { industry: string }
+      setModeGenerating(payload.industry)
     } else if (message.type === 'mode_switch') {
+      // Clear the generating state
+      setModeGenerating(null)
       // Handle mode switch from backend
       // Backend sends snake_case, transform to camelCase for frontend
       interface BackendModePayload {
         mode: {
           id: string
           name: string
+          company_name: string
+          tagline: string
           theme: {
             primary: string
             secondary: string
@@ -232,6 +294,8 @@ function AppContent() {
       const newMode: Mode = {
         id: payload.mode.id,
         name: payload.mode.name,
+        companyName: payload.mode.company_name,
+        tagline: payload.mode.tagline,
         theme: {
           primary: payload.mode.theme.primary,
           secondary: payload.mode.theme.secondary,
@@ -303,7 +367,7 @@ function AppContent() {
     setMessages([{
       id: '1',
       role: 'assistant',
-      content: `Hello! I'm your ${mode.name} assistant. Say "Presto-Change-O, you're a bank/insurance/healthcare" to transform this interface!`,
+      content: `Hello! I'm your assistant at ${mode.companyName}. How can I help you today?`,
       timestamp: new Date()
     }])
     // Reset visualization and metrics to current mode defaults
@@ -318,7 +382,7 @@ function AppContent() {
       {/* Left Panel - Chat */}
       <aside className="chat-panel">
         <header className="chat-header">
-          <span className="header-title">Chat Assistant</span>
+          <span className="header-title">{mode.companyName}</span>
           <div className="header-actions">
             <VoiceToggle
               isEnabled={voiceEnabled}
@@ -358,11 +422,11 @@ function AppContent() {
           <input
             type="text"
             className="chat-input"
-            placeholder={voiceEnabled ? "Voice mode active - speak to chat" : "Chat with me here..."}
+            placeholder={voiceEnabled ? "Voice mode active - speak or type..." : "Chat with me here..."}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyPress}
-            disabled={status !== 'connected' || voiceEnabled}
+            disabled={status !== 'connected'}
           />
           <button
             className="send-button"
@@ -380,6 +444,15 @@ function AppContent() {
 
       {/* Right Panel - Dashboard */}
       <main className="dashboard-panel">
+        {/* Mode generating overlay */}
+        {modeGenerating && (
+          <div className="mode-generating-overlay">
+            <div className="mode-generating-content">
+              <div className="mode-generating-spinner"></div>
+              <p>{modeGenerating ? `Generating ${modeGenerating} mode...` : 'Generating new mode...'}</p>
+            </div>
+          </div>
+        )}
         {persona && (
           <div className="persona-header">
             <PersonaCard persona={persona} modeId={mode.id} />
@@ -388,6 +461,8 @@ function AppContent() {
         <Dashboard
           metrics={dashboardMetrics}
           visualization={visualization}
+          companyName={mode.companyName}
+          tagline={mode.tagline}
         />
 
         <nav className="bottom-tabs">

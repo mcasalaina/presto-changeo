@@ -62,6 +62,14 @@ class GeneratedModeConfig(BaseModel):
     industry_id: str = Field(
         description="Lowercase identifier used as mode key, e.g., 'pet_store', 'law_firm'. Snake_case, URL-safe."
     )
+    company_name: str = Field(
+        description="Fictional company name for branding, e.g., 'Pawsitive Pets', 'Sterling Law Group'. "
+                    "Should sound professional and industry-appropriate."
+    )
+    tagline: str = Field(
+        description="Short company tagline/slogan, e.g., 'Where every pet is family', 'Justice with integrity'. "
+                    "10 words max, evokes the company's mission."
+    )
     primary_color: str = Field(
         description="Hex color code with industry association, e.g., '#4CAF50' (green for eco/pets). "
                     "Include '#' prefix. Choose colors that evoke the industry."

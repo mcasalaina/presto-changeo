@@ -19,6 +19,8 @@ html, body, #root {
   --theme-surface: #ffffff;
   --theme-text: #0f172a;
   --theme-text-muted: #64748b;
+  /* Chat panel uses a darker version of primary (set dynamically by ModeContext) */
+  --theme-chat-bg: #125089;
 }
 
 .app {
@@ -37,8 +39,9 @@ html, body, #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #1e3a5f;
+  background-color: var(--theme-chat-bg);
   color: #e2e8f0;
+  transition: background-color 0.3s ease;
 }
 
 .chat-header {
@@ -234,12 +237,12 @@ html, body, #root {
   min-width: 0;
 }
 
-/* Chart mode: metrics hidden, chart fills entire area */
-.dashboard-container.dashboard-chart-mode {
-  padding: 0;
+//* Full width mode: metrics hidden, visualization fills entire area */
+.dashboard-container.dashboard-full-width {
+  padding: 24px;
 }
 
-.dashboard-container.dashboard-chart-mode .dashboard-visualization {
+.dashboard-container.dashboard-full-width .dashboard-visualization {
   width: 100%;
 }
 
@@ -333,6 +336,41 @@ html, body, #root {
   max-width: 400px;
 }
 
+.visualization-placeholder .company-logo {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 70%, black));
+  border-radius: 24px;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--theme-primary) 30%, transparent);
+}
+
+.visualization-placeholder .logo-icon {
+  font-size: 48px;
+  filter: grayscale(100%) brightness(200%);
+}
+
+.visualization-placeholder .company-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--theme-text);
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 60%, black));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.visualization-placeholder .company-tagline {
+  font-size: 16px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+  margin-bottom: 24px;
+}
+
 .visualization-placeholder .viz-icon {
   font-size: 64px;
   margin-bottom: 24px;
@@ -342,20 +380,21 @@ html, body, #root {
 .visualization-placeholder h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--theme-text);
   margin-bottom: 12px;
 }
 
 .visualization-placeholder p {
   font-size: 15px;
-  color: #475569;
+  color: var(--theme-text-muted);
   margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .visualization-placeholder .viz-hint {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--theme-text-muted);
+  opacity: 0.7;
   margin-top: 16px;
 }
 
@@ -828,4 +867,43 @@ html, body, #root {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ==================== MODE GENERATING OVERLAY ==================== */
+
+.mode-generating-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.mode-generating-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.mode-generating-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.dashboard-panel {
+  position: relative;
 }

@@ -30,6 +30,8 @@ class ModeMetric(BaseModel):
 class Mode(BaseModel):
     id: str
     name: str
+    company_name: str  # Fake company name for branding
+    tagline: str  # Company tagline for welcome area
     theme: ModeTheme
     tabs: list[ModeTab]
     system_prompt: str
@@ -41,6 +43,8 @@ MODES: dict[str, Mode] = {
     "banking": Mode(
         id="banking",
         name="Banking",
+        company_name="Meridian Trust Bank",
+        tagline="Your trusted financial partner since 1952",
         theme=ModeTheme(
             primary="#1E88E5",      # Blue - trust, stability
             secondary="#43A047",    # Green - money, growth
@@ -80,6 +84,8 @@ CHART PREFERENCE: For time-series data (anything "over time"), always use LINE c
     "insurance": Mode(
         id="insurance",
         name="Insurance",
+        company_name="Guardian Shield Insurance",
+        tagline="Protecting what matters most",
         theme=ModeTheme(
             primary="#7B1FA2",      # Purple - protection, premium
             secondary="#00897B",    # Teal - calm, trust
@@ -119,6 +125,8 @@ CHART PREFERENCE: For time-series data (anything "over time"), always use LINE c
     "healthcare": Mode(
         id="healthcare",
         name="Healthcare",
+        company_name="Vitality Health Partners",
+        tagline="Your health, our priority",
         theme=ModeTheme(
             primary="#00ACC1",      # Cyan - clean, medical
             secondary="#E53935",    # Red - health, urgency
@@ -196,7 +204,12 @@ _current_mode: str = "banking"
 
 def get_current_mode() -> Mode:
     """Get the current active mode."""
-    return MODES[_current_mode]
+    # Use get_mode to check both pre-built and dynamically generated modes
+    mode = get_mode(_current_mode)
+    if mode:
+        return mode
+    # Fallback to banking if current mode not found
+    return MODES["banking"]
 
 
 def set_current_mode(mode_id: str) -> Mode | None:

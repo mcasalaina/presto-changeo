@@ -10,6 +10,8 @@ export type VoiceStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export interface UseVoiceOptions {
   onTranscript?: (role: 'user' | 'assistant', text: string) => void
   onToolResult?: (tool: string, result: Record<string, unknown>) => void
+  onModeSwitch?: (payload: Record<string, unknown>) => void  // Called when mode switch detected via voice
+  onModeGenerating?: (industry: string) => void  // Called when mode generation starts
   onError?: (error: string) => void
   onInterrupt?: () => void  // Called when user starts speaking (interrupts assistant)
   onUserSpeechEnd?: () => void  // Called when user stops speaking (end of utterance)
@@ -43,7 +45,7 @@ interface VoiceMessage {
  * @returns Voice state and control functions
  */
 export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
-  const { onTranscript, onToolResult, onError, onInterrupt, onUserSpeechEnd, onUserSpeechStart } = options
+  const { onTranscript, onToolResult, onModeSwitch, onModeGenerating, onError, onInterrupt, onUserSpeechEnd, onUserSpeechStart } = options
 
   // State
   const [isEnabled, setIsEnabled] = useState(false)
@@ -75,12 +77,16 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   // Store callbacks in refs to avoid stale closures
   const onTranscriptRef = useRef(onTranscript)
   const onToolResultRef = useRef(onToolResult)
+  const onModeSwitchRef = useRef(onModeSwitch)
+  const onModeGeneratingRef = useRef(onModeGenerating)
   const onErrorRef = useRef(onError)
   const onInterruptRef = useRef(onInterrupt)
   const onUserSpeechEndRef = useRef(onUserSpeechEnd)
   const onUserSpeechStartRef = useRef(onUserSpeechStart)
   onTranscriptRef.current = onTranscript
   onToolResultRef.current = onToolResult
+  onModeSwitchRef.current = onModeSwitch
+  onModeGeneratingRef.current = onModeGenerating
   onErrorRef.current = onError
   onInterruptRef.current = onInterrupt
   onUserSpeechEndRef.current = onUserSpeechEnd
@@ -207,6 +213,14 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             message.tool as string,
             message.result as Record<string, unknown>
           )
+          break
+
+        case 'mode_switch':
+          onModeSwitchRef.current?.(message.payload as Record<string, unknown>)
+          break
+
+        case 'mode_generating':
+          onModeGeneratingRef.current?.((message.payload as { industry: string }).industry)
           break
 
         case 'error':

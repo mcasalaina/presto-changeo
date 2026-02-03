@@ -16,6 +16,8 @@ export interface ModeTab {
 export interface Mode {
   id: string           // 'banking' | 'insurance' | 'healthcare'
   name: string         // Display name: "Banking", "Insurance", etc.
+  companyName: string  // Fake company name for branding: "Meridian Trust Bank"
+  tagline: string      // Company tagline for welcome area
   theme: ModeTheme
   tabs: ModeTab[]
   systemPrompt: string // AI personality prompt for this mode

@@ -305,8 +305,8 @@ def generate_generic_persona(mode_id: str, mode_name: str, seed: int) -> dict:
     fake = Faker()
     fake.seed_instance(seed)
 
-    # Generate a generic customer profile
-    name = fake.name()
+    # Always use Marco Casalaina as the customer name for consistency
+    name = "Marco Casalaina"
     member_since = fake.date_between(start_date='-5y', end_date='-1y').strftime('%B %Y')
 
     # Generate some generic metrics that work for any business

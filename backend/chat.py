@@ -158,63 +158,112 @@ Use these values when creating charts or responding about customer data."""
     return f"{base}\n\n{persona_context}" if persona_context else base
 
 
-def _extract_industry_from_trigger(text: str) -> str | None:
+async def _detect_mode_switch_intent(text: str) -> str | None:
     """
-    Extract the industry name from a Presto-Change-O trigger phrase.
-    Returns the raw industry name (e.g., "florist", "pet store") or None if no trigger.
-    """
-    # Normalize: lowercase, remove punctuation except spaces
-    normalized = re.sub(r"[^\w\s]", "", text.lower())
+    Use LLM to detect if the user wants to switch modes and extract the industry.
+    Returns the industry name if a mode switch is detected, None otherwise.
 
-    # Check for the trigger phrase (handles "presto-change-o", "presto change o", "prestochangeo")
-    if "presto change o" not in normalized and "prestochangeo" not in normalized:
+    This replaces brittle regex matching with semantic understanding.
+    The LLM understands variations like:
+    - "Presto-Change-O, you're a bank"
+    - "presto chango you're a health insurance company"
+    - "hey presto changeo be a florist"
+    - "transform into a pet store"
+    """
+    client = get_inference_client()
+
+    try:
+        response = client.complete(
+            model=MODEL_DEPLOYMENT,
+            messages=[
+                SystemMessage(content="""You are a mode switch detector for the Presto-Change-O app.
+Your job is to determine if the user wants to switch the app to a different industry mode.
+
+Mode switch phrases include variations like:
+- "Presto-Change-O, you're a [industry]"
+- "presto chango you're a [industry]"
+- "presto [industry]" (just the word presto followed by an industry)
+- "presto, be a [industry]"
+- "transform into a [industry]"
+- "switch to [industry] mode"
+- "be a [industry]"
+
+The key trigger word is "presto" (or variations like "presto-change-o", "presto chango").
+If you hear "presto" followed by ANY industry or business type, that's a mode switch request.
+
+If the user is requesting a mode switch, respond with ONLY the industry name (e.g., "bank", "florist", "pet store", "healthcare provider").
+If the user is NOT requesting a mode switch, respond with exactly "NONE".
+
+Be generous in interpretation - if it sounds like they want to change the interface theme/industry, extract the industry."""),
+                UserMessage(content=text)
+            ],
+        )
+
+        result = response.choices[0].message.content.strip()
+        logger.info(f"Mode switch detection result: '{result}' for input: '{text[:50]}...'")
+
+        if result.upper() == "NONE" or not result:
+            return None
+
+        return result.lower()
+
+    except Exception as e:
+        logger.error(f"Mode switch detection failed: {e}")
         return None
 
-    # Extract what comes after "youre a" or "youre an"
-    # Pattern: "presto change o youre a/an [industry]"
-    match = re.search(r"youre\s+(?:a|an)\s+(.+)", normalized)
-    if match:
-        return match.group(1).strip()
 
-    return None
-
-
-async def detect_mode_switch(text: str) -> Mode | None:
+async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> Mode | None:
     """
-    Detect if the user is requesting a mode switch.
+    Detect if the user is requesting a mode switch using LLM intent detection.
     Returns the Mode object if detected, None otherwise.
 
-    For pre-built modes (banking, insurance, healthcare), returns immediately.
-    For unknown industries, generates a new mode dynamically using the LLM.
+    Uses semantic understanding instead of keyword matching to handle
+    variations in how users phrase mode switch requests.
 
-    Patterns matched:
-    - "Presto-Change-O, you're a bank" -> banking mode (pre-built)
-    - "Presto-Change-O, you're a florist" -> dynamically generated
+    Args:
+        text: The user's input text
+        websocket: Optional websocket to send loading notifications
     """
-    industry = _extract_industry_from_trigger(text)
+    industry = await _detect_mode_switch_intent(text)
     if not industry:
         return None
 
-    # Check for pre-built mode keywords first
-    if any(word in industry for word in ["bank", "banking", "financial"]):
+    logger.info(f"Mode switch intent detected for industry: {industry}")
+
+    # Map common industry names to pre-built modes
+    industry_lower = industry.lower()
+
+    # Banking mode
+    if any(word in industry_lower for word in ["bank", "banking", "financial", "finance"]):
         return get_mode("banking")
-    if any(word in industry for word in ["insurance", "insurer", "policy"]):
+
+    # Insurance mode
+    if any(word in industry_lower for word in ["insurance", "insurer", "policy", "claims"]):
         return get_mode("insurance")
-    if any(word in industry for word in ["health", "healthcare", "medical", "hospital", "doctor"]):
+
+    # Healthcare mode
+    if any(word in industry_lower for word in ["health", "healthcare", "medical", "hospital", "doctor", "clinic"]):
         return get_mode("healthcare")
 
-    # Check if we already have this mode (pre-built or previously generated)
-    # Normalize industry to mode_id format (spaces to underscores)
-    mode_id = industry.replace(" ", "_")
+    # Check if we already have this mode (previously generated)
+    mode_id = industry.replace(" ", "_").replace("-", "_")
     existing_mode = get_mode(mode_id)
     if existing_mode:
         logger.info(f"Found existing mode for '{industry}': {existing_mode.name}")
         return existing_mode
 
+    # Notify that we're generating a new mode (this takes time)
+    if websocket:
+        await websocket.send_text(json.dumps({
+            "type": "mode_generating",
+            "payload": {"industry": industry}
+        }))
+
     # Try to generate a new mode for this industry
+    # Pass the full user request so the LLM can extract any company name mentioned
     try:
         logger.info(f"Generating mode for unknown industry: {industry}")
-        new_mode = await generate_mode(industry)
+        new_mode = await generate_mode(industry, text)
         if new_mode:
             store_generated_mode(new_mode)
             logger.info(f"Generated and stored mode: {new_mode.name} (id={new_mode.id})")
@@ -263,6 +312,8 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                 "mode": {
                     "id": new_mode.id,
                     "name": new_mode.name,
+                    "company_name": new_mode.company_name,
+                    "tagline": new_mode.tagline,
                     "theme": new_mode.theme.model_dump(),
                     "tabs": [tab.model_dump() for tab in new_mode.tabs],
                     "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]

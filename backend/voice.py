@@ -13,8 +13,9 @@ from fastapi import WebSocket
 
 from auth import get_azure_credential
 from tools import TOOL_DEFINITIONS, execute_tool
-from modes import get_current_mode
-from chat import build_system_prompt, ensure_persona
+from modes import get_current_mode, set_current_mode
+from chat import build_system_prompt, ensure_persona, detect_mode_switch, get_session_seed
+from persona import generate_persona
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +194,77 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                 "role": "user",
                                 "text": transcript
                             }))
+
+                            # Quick check if this might be a mode switch (cancel early!)
+                            transcript_lower = transcript.lower()
+                            might_be_mode_switch = "presto" in transcript_lower
+
+                            if might_be_mode_switch:
+                                # Cancel any in-flight response IMMEDIATELY before LLM call
+                                await realtime_ws.send(json.dumps({
+                                    "type": "response.cancel"
+                                }))
+                                logger.info("Cancelled in-flight response (possible mode switch)")
+
+                                # Send loading indicator to frontend
+                                await websocket.send_text(json.dumps({
+                                    "type": "mode_generating",
+                                    "payload": {"industry": ""}
+                                }))
+
+                            # Check for mode switch in voice transcript
+                            new_mode = await detect_mode_switch(transcript, websocket)
+                            if new_mode:
+                                logger.info(f"Voice mode switch detected: {new_mode.name}")
+                                set_current_mode(new_mode.id)
+
+                                # Generate persona for new mode
+                                persona = generate_persona(new_mode.id, get_session_seed())
+                                logger.info(f"Generated persona for voice: {persona.get('name', 'Unknown')}")
+
+                                # Send mode_switch to browser
+                                await websocket.send_text(json.dumps({
+                                    "type": "mode_switch",
+                                    "payload": {
+                                        "mode": {
+                                            "id": new_mode.id,
+                                            "name": new_mode.name,
+                                            "company_name": new_mode.company_name,
+                                            "tagline": new_mode.tagline,
+                                            "theme": new_mode.theme.model_dump(),
+                                            "tabs": [tab.model_dump() for tab in new_mode.tabs],
+                                            "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
+                                        },
+                                        "persona": persona
+                                    }
+                                }))
+
+                                # Update gpt-realtime session with new instructions
+                                new_system_prompt = build_system_prompt(new_mode, persona)
+                                await realtime_ws.send(json.dumps({
+                                    "type": "session.update",
+                                    "session": {
+                                        "instructions": new_system_prompt
+                                    }
+                                }))
+                                logger.info("Updated gpt-realtime session with new mode instructions")
+
+                                # Trigger a new response with a welcome message context
+                                await realtime_ws.send(json.dumps({
+                                    "type": "conversation.item.create",
+                                    "item": {
+                                        "type": "message",
+                                        "role": "user",
+                                        "content": [{
+                                            "type": "input_text",
+                                            "text": f"The user just switched to {new_mode.name} mode. Greet them warmly as their new {new_mode.name} assistant. Be brief."
+                                        }]
+                                    }
+                                }))
+                                await realtime_ws.send(json.dumps({
+                                    "type": "response.create"
+                                }))
+                                logger.info("Triggered welcome response for new mode")
 
                     elif event_type == "response.audio.delta":
                         # Audio chunk from assistant
