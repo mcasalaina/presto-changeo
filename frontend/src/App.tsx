@@ -4,7 +4,6 @@ import { useVoice } from './hooks/useVoice'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
 import { ChartRenderer } from './components/ChartRenderer'
-import { PersonaCard } from './components/PersonaCard'
 import { VoiceToggle } from './components/VoiceToggle'
 import { ModeProvider, useMode } from './context/ModeContext'
 import type { Mode, Persona } from './types/mode'
@@ -451,11 +450,6 @@ function AppContent() {
               <div className="mode-generating-spinner"></div>
               <p>{modeGenerating ? `Generating ${modeGenerating} mode...` : 'Generating new mode...'}</p>
             </div>
-          </div>
-        )}
-        {persona && (
-          <div className="persona-header">
-            <PersonaCard persona={persona} modeId={mode.id} />
           </div>
         )}
         <Dashboard
