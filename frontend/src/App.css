@@ -61,33 +61,61 @@ html, body, #root {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.new-chat-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 18px;
-  font-weight: 300;
+/* Image-based icon buttons */
+.icon-button-img {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s;
+  transition: transform 0.15s ease;
+  position: relative;
 }
 
-.new-chat-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.icon-button-img:hover {
+  transform: scale(1.08);
 }
 
-.status-dot {
-  width: 10px;
-  height: 10px;
+.icon-button-img:active {
+  transform: scale(0.95);
+}
+
+.icon-button-img:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.button-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.spinner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 50%;
+}
+
+.spinner-overlay::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .chat-messages {
@@ -769,58 +797,21 @@ html, body, #root {
 .voice-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.voice-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.voice-button:hover {
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.voice-button.active {
-  border-color: #22c55e;
-  background: #22c55e;
-  color: white;
-}
-
-.voice-button.connecting {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.voice-button.error {
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-/* Listening animation - subtle pulse when user is speaking */
-.voice-button.listening {
+/* Listening animation - pulse when user is speaking */
+.icon-button-img.listening {
   animation: voice-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes voice-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(34, 197, 94, 0.5)); }
+  50% { filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.8)); }
 }
 
-/* Speaking animation - different rhythm when AI is speaking */
-.voice-button.speaking {
+/* Speaking animation - glow when AI is speaking */
+.icon-button-img.speaking {
   animation: voice-speak 0.8s ease-in-out infinite;
 }
 
@@ -829,31 +820,13 @@ html, body, #root {
   50% { transform: scale(1.08); }
 }
 
-/* Mute button */
-.mute-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 12px;
+.icon-button-img.connecting {
+  opacity: 0.6;
 }
 
-.mute-button:hover {
-  border-color: rgba(255, 255, 255, 0.5);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.mute-button.muted {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
-  color: #ef4444;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Voice status indicator */

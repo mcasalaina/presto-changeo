@@ -174,7 +174,11 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                         logger.info("gpt-realtime session updated")
 
                     elif event_type == "input_audio_buffer.speech_started":
-                        # User started speaking
+                        # User started speaking - IMMEDIATELY cancel any in-progress response
+                        await realtime_ws.send(json.dumps({
+                            "type": "response.cancel"
+                        }))
+                        logger.info("User interrupted - cancelled response")
                         await websocket.send_text(json.dumps({
                             "type": "speech_started"
                         }))

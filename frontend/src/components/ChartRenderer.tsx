@@ -31,13 +31,10 @@ interface ChartRendererProps {
 const COLORS = ['#1E88E5', '#43A047', '#7B1FA2', '#E53935', '#00ACC1', '#FB8C00']
 
 /**
- * Format a number as currency if it looks like a dollar amount (> 100)
+ * Format a number with thousands separators
  */
 function formatValue(value: number): string {
-  if (value >= 100) {
-    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-  }
-  return value.toLocaleString('en-US')
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
 /**

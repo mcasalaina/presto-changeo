@@ -393,10 +393,9 @@ function AppContent() {
               onDisable={disableVoice}
               onToggleMute={toggleVoiceMute}
             />
-            <button className="new-chat-button" onClick={handleNewChat} title="New Chat">
-              +
+            <button className="icon-button-img" onClick={handleNewChat} title="New Conversation">
+              <img src="/icons/new_conversation.png" alt="New Conversation" className="button-icon" />
             </button>
-            <span className="status-dot" style={{ backgroundColor: getStatusColor(status) }} />
           </div>
         </header>
 

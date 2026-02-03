@@ -2,8 +2,16 @@
 Mode Configuration Models
 Pydantic models for mode definitions that control industry theming and AI behavior.
 """
+import json
+import logging
+from pathlib import Path
 
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+# State file for persisting mode across restarts
+STATE_FILE = Path(__file__).parent / ".mode_state.json"
 
 
 class ModeTheme(BaseModel):
@@ -182,9 +190,42 @@ This creates separate lines for each series. ALWAYS use this format when compari
 _generated_modes: dict[str, Mode] = {}
 
 
+def _save_state() -> None:
+    """Persist current mode and generated modes to disk."""
+    try:
+        state = {
+            "current_mode": _current_mode,
+            "generated_modes": {
+                mode_id: mode.model_dump()
+                for mode_id, mode in _generated_modes.items()
+            }
+        }
+        STATE_FILE.write_text(json.dumps(state, indent=2))
+        logger.info(f"Saved mode state: {_current_mode}")
+    except Exception as e:
+        logger.warning(f"Failed to save mode state: {e}")
+
+
+def _load_state() -> None:
+    """Load persisted mode state from disk."""
+    global _current_mode, _generated_modes
+    try:
+        if STATE_FILE.exists():
+            state = json.loads(STATE_FILE.read_text())
+            _current_mode = state.get("current_mode", "banking")
+            # Restore generated modes
+            for mode_id, mode_data in state.get("generated_modes", {}).items():
+                _generated_modes[mode_id] = Mode(**mode_data)
+            logger.info(f"Restored mode state: {_current_mode} ({len(_generated_modes)} generated modes)")
+    except Exception as e:
+        logger.warning(f"Failed to load mode state: {e}")
+        _current_mode = "banking"
+
+
 def store_generated_mode(mode: Mode) -> None:
     """Store a dynamically generated mode for session reuse."""
     _generated_modes[mode.id] = mode
+    _save_state()
 
 
 def get_generated_mode(mode_id: str) -> Mode | None:
@@ -230,5 +271,10 @@ def set_current_mode(mode_id: str) -> Mode | None:
     mode = get_mode(mode_id)
     if mode:
         _current_mode = mode_id.lower()
+        _save_state()
         return mode
     return None
+
+
+# Load persisted state on module import
+_load_state()

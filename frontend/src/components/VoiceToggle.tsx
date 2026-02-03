@@ -11,10 +11,6 @@ export interface VoiceToggleProps {
   onToggleMute: () => void
 }
 
-/**
- * Voice toggle UI with enable/disable, mute, and visual indicators.
- * Shows listening (user speaking) and speaking (AI responding) states.
- */
 export function VoiceToggle({
   isEnabled,
   isMuted,
@@ -25,21 +21,18 @@ export function VoiceToggle({
   onDisable,
   onToggleMute,
 }: VoiceToggleProps) {
-  // Determine button classes based on state
   const getButtonClasses = () => {
-    const classes = ['voice-button']
+    const classes = ['icon-button-img']
     if (isEnabled) {
-      classes.push('active')
       if (isListening) classes.push('listening')
       if (isSpeaking) classes.push('speaking')
     }
     if (status === 'connecting') classes.push('connecting')
-    if (status === 'error') classes.push('error')
     return classes.join(' ')
   }
 
   const handleMainClick = () => {
-    if (status === 'connecting') return // Prevent double-click during connection
+    if (status === 'connecting') return
     if (isEnabled) {
       onDisable()
     } else {
@@ -47,57 +40,33 @@ export function VoiceToggle({
     }
   }
 
-  // Status text for accessibility and visual feedback
-  const getStatusText = () => {
-    if (status === 'connecting') return 'Connecting...'
-    if (status === 'error') return 'Error'
-    if (!isEnabled) return ''
-    if (isListening) return 'Listening...'
-    if (isSpeaking) return 'Speaking...'
-    return 'Voice active'
-  }
+  const voiceIcon = isEnabled
+    ? '/icons/active_voice_mode.png'
+    : '/icons/inactive_voice_mode.png'
 
-  const statusText = getStatusText()
+  const muteIcon = isMuted
+    ? '/icons/active_mute.png'
+    : '/icons/inactive_mute.png'
 
   return (
     <div className="voice-toggle">
-      {/* Main voice toggle button */}
       <button
         className={getButtonClasses()}
         onClick={handleMainClick}
         title={isEnabled ? 'Disable voice' : 'Enable voice'}
-        aria-label={isEnabled ? 'Disable voice mode' : 'Enable voice mode'}
         disabled={status === 'connecting'}
       >
-        {status === 'connecting' ? (
-          // Simple spinner during connection
-          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>
-            ⟳
-          </span>
-        ) : status === 'error' ? (
-          '!'
-        ) : (
-          '🎤'
-        )}
+        <img src={voiceIcon} alt="Voice" className="button-icon" />
       </button>
 
-      {/* Mute button - only visible when voice is enabled */}
       {isEnabled && status === 'connected' && (
         <button
-          className={`mute-button ${isMuted ? 'muted' : ''}`}
+          className="icon-button-img"
           onClick={onToggleMute}
-          title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-          aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+          title={isMuted ? 'Unmute' : 'Mute'}
         >
-          {isMuted ? '🔇' : '🔊'}
+          <img src={muteIcon} alt={isMuted ? 'Muted' : 'Unmuted'} className="button-icon" />
         </button>
-      )}
-
-      {/* Status indicator text */}
-      {statusText && (
-        <span className="voice-status" aria-live="polite">
-          {statusText}
-        </span>
       )}
     </div>
   )
