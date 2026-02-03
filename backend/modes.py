@@ -67,9 +67,9 @@ You have access to visualization tools to display data in the dashboard:
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
 For current balances and profile data, use the EXACT values from the Current Customer Profile.
-For historical data (balance over time, spending trends, etc.), generate plausible data that shows realistic patterns trending toward the current values. This is a demo app - create compelling visualizations!
+For historical data (balance over time, spending trends, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns trending toward the current values. This is a demo app - create compelling visualizations!
 
-CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts. Use BAR charts only for comparing discrete categories (e.g., checking vs savings). Use PIE charts for showing composition/breakdown.""",
+CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories (e.g., checking vs savings). Use PIE charts for showing composition/breakdown.""",
         default_metrics=[
             ModeMetric(label="Account Balance", value="$24,856.42"),
             ModeMetric(label="Recent Transactions", value=12),
@@ -106,9 +106,9 @@ You have access to visualization tools to display data in the dashboard:
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
 For current coverage and profile data, use the EXACT values from the Current Customer Profile.
-For historical data (premium trends, claims over time, etc.), generate plausible data that shows realistic patterns. This is a demo app - create compelling visualizations!
+For historical data (premium trends, claims over time, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!
 
-CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.""",
+CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.""",
         default_metrics=[
             ModeMetric(label="Active Policies", value=3),
             ModeMetric(label="Total Coverage", value="$750,000"),
@@ -145,9 +145,9 @@ You have access to visualization tools to display data in the dashboard:
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
 For current health data and profile info, use the EXACT values from the Current Patient Profile.
-For historical data (deductible usage over time, visit history, etc.), generate plausible data that shows realistic patterns. This is a demo app - create compelling visualizations!
+For historical data (deductible usage over time, visit history, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!
 
-CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.""",
+CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.""",
         default_metrics=[
             ModeMetric(label="Upcoming Appointments", value=2),
             ModeMetric(label="Active Prescriptions", value=4),
