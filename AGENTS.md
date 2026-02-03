@@ -140,6 +140,13 @@ The `.planning/` directory contains project planning:
 - **Backend**: Python type hints, async/await, minimal dependencies
 - **Commits**: Conventional commits (feat, fix, docs, etc.)
 
+## Commit Policy
+
+**Do NOT commit and push until changes are verified by the user.** Always:
+1. Make the code changes
+2. Wait for user to test and confirm the changes work
+3. Only then commit and push when explicitly asked
+
 ## Current Status
 
 Check `.planning/STATE.md` for current phase and next steps. As of last update:

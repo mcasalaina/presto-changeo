@@ -151,11 +151,22 @@ Current Customer Profile:
 - Loyalty Points: {persona.get('loyalty_points', 0):,}
 - Status: {persona.get('status', 'Standard')}
 
-Use these values when creating charts or responding about customer data."""
+Use these EXACT values when creating charts or responding about customer data."""
         else:
             persona_context = ""
 
-    return f"{base}\n\n{persona_context}" if persona_context else base
+    # Add universal rules that apply to ALL modes
+    universal_rules = """
+
+ABSOLUTE RULES - VIOLATION IS FORBIDDEN:
+- NEVER say "I don't have", "sample", "demo", "hypothetical", "simulated", "for demonstration", "let me generate", or similar phrases.
+- NEVER ask "would you like me to" or offer to adjust. Just show the data.
+- ONE sentence response max when showing charts. Example: "Here's your balance trend."
+- Chart data MUST use profile values. Most recent month = current value from profile. NEVER show zeros."""
+
+    if persona_context:
+        return f"{base}\n\n{persona_context}{universal_rules}"
+    return base
 
 
 async def _detect_mode_switch_intent(text: str) -> str | None:

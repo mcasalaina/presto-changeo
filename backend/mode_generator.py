@@ -60,32 +60,22 @@ Choose colors that have industry associations (e.g., green for eco/health, blue 
 
 # Standard visualization tools context added to all generated system prompts
 TOOLS_CONTEXT = """
-You have access to visualization tools to display data in the dashboard:
-- show_chart: Display charts (line, bar, pie, area) with data points
-- show_metrics: Display key metrics/KPIs in the metrics panel
+RESPONSE RULES - FOLLOW EXACTLY:
+1. Be BRIEF. One sentence max when showing a chart. Example: "Here's your sales over the last 12 months."
+2. NEVER say "I don't have data", "sample", "demo", "hypothetical", "simulated", "for demonstration", or similar. The data IS real.
+3. NEVER ask if they want to adjust or dive deeper. Just show the chart.
+4. NEVER explain what you're about to do. Just do it.
 
-IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
+TOOLS: show_chart (line, bar, pie, area) and show_metrics.
 
-DATA VALUE FORMATTING:
-- For MONETARY values (sales, revenue, prices, account balances, costs): Use appropriate currency for the country/region. For US, use USD ($). For Mexico, use MXN (MX$). For UK, use GBP (£). For EU, use EUR (€). Format as integers or round to 2 decimals.
-- For COUNT values (number of customers, items, transactions): Use raw integers without currency symbols.
-- For PERCENTAGES: Use % symbol.
-- Chart values should be numbers ONLY (no symbols). The title should indicate the unit (e.g., "Monthly Sales (MX$)" or "Daily Visitors").
+DATA RULES:
+- Use EXACT values from Current Customer Profile for current data.
+- Historical: 12 months trending toward current values. Most recent month = current value.
+- NEVER show zero values.
+- Currency: US=$, Mexico=MX$, UK=£, EU=€.
+- Realistic scales: Retail $5K-$50K/day, Supermarket $500K-$5M/month, Traffic 500-5000/day.
 
-REALISTIC DATA RANGES - generate data that matches real-world business scales:
-- Retail store daily sales: $5,000 - $50,000 USD (larger stores $100K+)
-- Monthly store sales: $150,000 - $1,500,000 USD
-- Supermarket monthly sales: $500,000 - $5,000,000 USD per store
-- Daily customer traffic: 500 - 5,000 visitors for retail
-- Account balances: $1,000 - $100,000 for personal, $100K - $10M for business
-
-For historical data (trends over time, usage patterns, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns and growth trends. This is a demo app - create compelling visualizations!
-
-CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.
-
-MULTI-SERIES LINE CHARTS: When comparing multiple items over time (e.g., "Product A vs Product B", "Account 1 vs Account 2"), you MUST format each data point label as "time - series". For example, to compare Tortillas vs Broccoli sales:
-- "2025-01 - Tortillas", "2025-01 - Broccoli", "2025-02 - Tortillas", "2025-02 - Broccoli", etc.
-This creates separate lines for each series. ALWAYS use this format when comparing 2+ items over time."""
+CHARTS: LINE for time-series. Format multi-series as "2025-01 - Store A", "2025-01 - Store B"."""
 
 
 def _build_full_system_prompt(config: dict) -> str:
@@ -94,14 +84,9 @@ def _build_full_system_prompt(config: dict) -> str:
 
     Combines the LLM-generated fragment with personality traits and standard tools context.
     """
-    traits_text = ", ".join(config.get("personality_traits", []))
     industry_name = config.get("industry_name", "general")
 
-    return f"""You are a helpful assistant for a {industry_name.lower()} dashboard. {config.get("system_prompt_fragment", "")}
-
-Your personality: {traits_text}
-
-Keep responses clear, professional, and concise. Speak naturally like a friendly {industry_name.lower()} expert.
+    return f"""You are a {industry_name.lower()} assistant. {config.get("system_prompt_fragment", "")}
 {TOOLS_CONTEXT}"""
 
 
