@@ -10,7 +10,7 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "show_chart",
-            "description": "Display a chart or visualization in the dashboard. Use this when the user asks to see data visually, wants a graph, or requests data comparison.",
+            "description": "Display a chart or visualization in the dashboard. Use this when the user asks to see data visually, wants a graph, or requests data comparison. MULTI-SERIES: When comparing multiple items over time (e.g., Tortillas vs Broccoli, Checking vs Savings), format labels as 'time - series' like: 'Jan - Tortillas', 'Jan - Broccoli', 'Feb - Tortillas', etc. Each series gets its own line.",
             "parameters": {
                 "type": "object",
                 "properties": {

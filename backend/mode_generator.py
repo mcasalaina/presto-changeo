@@ -68,7 +68,11 @@ IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a bri
 
 For historical data (trends over time, usage patterns, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!
 
-CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown."""
+CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.
+
+MULTI-SERIES LINE CHARTS: When comparing multiple items over time (e.g., "Product A vs Product B", "Account 1 vs Account 2"), you MUST format each data point label as "time - series". For example, to compare Tortillas vs Broccoli sales:
+- "2025-01 - Tortillas", "2025-01 - Broccoli", "2025-02 - Tortillas", "2025-02 - Broccoli", etc.
+This creates separate lines for each series. ALWAYS use this format when comparing 2+ items over time."""
 
 
 def _build_full_system_prompt(config: dict) -> str:
