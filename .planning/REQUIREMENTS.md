@@ -26,19 +26,19 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MODE-01**: User can switch modes via "Presto-Change-O, you're a [industry]" command
 - [x] **MODE-02**: Pre-built modes available: Banking, Insurance, Healthcare
 - [x] **MODE-03**: Interface applies industry-appropriate color theming on mode switch
-- [ ] **MODE-04**: User can request arbitrary industry and system generates mode on-demand
+- [x] **MODE-04**: User can request arbitrary industry and system generates mode on-demand
 
 ### Persona & Data
 
-- [ ] **PERS-01**: System generates seeded persona with consistent data per session
-- [ ] **PERS-02**: Persona includes industry-appropriate fake data (balances, claims, coverage, etc.)
+- [x] **PERS-01**: System generates seeded persona with consistent data per session
+- [x] **PERS-02**: Persona includes industry-appropriate fake data (balances, claims, coverage, etc.)
 
 ### Voice
 
-- [ ] **VOIC-01**: User can enable toggle-mode voice and speak freely
-- [ ] **VOIC-02**: AI voice responds with short spoken answers
-- [ ] **VOIC-03**: Voice response syncs with visual (chart appears as voice speaks)
-- [ ] **VOIC-04**: User can mute voice output to prevent feedback when using speakers
+- [x] **VOIC-01**: User can enable toggle-mode voice and speak freely
+- [x] **VOIC-02**: AI voice responds with short spoken answers
+- [x] **VOIC-03**: Voice response syncs with visual (chart appears as voice speaks)
+- [x] **VOIC-04**: User can mute voice output to prevent feedback when using speakers
 
 ### Performance & Infrastructure
 
@@ -93,13 +93,13 @@ Which phases cover which requirements. Updated by create-roadmap.
 | MODE-01 | Phase 4 | Complete |
 | MODE-02 | Phase 4 | Complete |
 | MODE-03 | Phase 4 | Complete |
-| MODE-04 | Phase 7 | Pending |
-| PERS-01 | Phase 5 | Pending |
-| PERS-02 | Phase 5 | Pending |
-| VOIC-01 | Phase 6 | Pending |
-| VOIC-02 | Phase 6 | Pending |
-| VOIC-03 | Phase 6 | Pending |
-| VOIC-04 | Phase 6 | Pending |
+| MODE-04 | Phase 7 | Complete |
+| PERS-01 | Phase 5 | Complete |
+| PERS-02 | Phase 5 | Complete |
+| VOIC-01 | Phase 6 | Complete |
+| VOIC-02 | Phase 6 | Complete |
+| VOIC-03 | Phase 6 | Complete |
+| VOIC-04 | Phase 6 | Complete |
 | PERF-01 | Phase 8 | Pending |
 | PERF-02 | Phase 8 | Pending |
 | PERF-03 | Phase 8 | Pending |
@@ -112,4 +112,4 @@ Which phases cover which requirements. Updated by create-roadmap.
 
 ---
 *Requirements defined: 2026-01-15*
-*Last updated: 2026-01-15 after roadmap creation*
+*Last updated: 2026-02-02 after Phase 7 completion*
