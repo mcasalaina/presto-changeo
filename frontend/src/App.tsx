@@ -115,10 +115,17 @@ function AppContent() {
       voiceAssistantIdRef.current = null
     },
     onUserSpeechEnd: () => {
-      // User stopped speaking - reset user message ID so next utterance is new bubble
-      voiceUserIdRef.current = null
+      // Don't reset ref here - transcript arrives AFTER speech ends
+      // The transcript handler will fill in the placeholder
     },
     onUserSpeechStart: () => {
+      // Clean up any stale placeholder from previous speech that never got a transcript
+      const oldId = voiceUserIdRef.current
+      if (oldId) {
+        setMessages(prev => prev.filter(msg =>
+          msg.id !== oldId || msg.content !== '...'
+        ))
+      }
       // Create placeholder for user message to ensure correct ordering
       const newId = Date.now().toString()
       voiceUserIdRef.current = newId

@@ -15,6 +15,38 @@ const defaultMetrics: Metric[] = [
   { label: 'Credit Score', value: '742' },
 ]
 
+/**
+ * Format a metric value with its unit, handling currency as prefix.
+ */
+function formatMetricValue(value: string | number, unit?: string): string {
+  // If value is already a formatted string (e.g., "$24,856.42"), return as-is
+  if (typeof value === 'string' && (value.includes('$') || value.includes('%'))) {
+    return value
+  }
+
+  // Format number with thousands separators
+  const formattedNumber = typeof value === 'number'
+    ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value
+
+  // Handle currency prefix
+  if (unit === '$') {
+    return `$${formattedNumber}`
+  }
+
+  // Handle percentage suffix
+  if (unit === '%') {
+    return `${formattedNumber}%`
+  }
+
+  // Handle other units as suffix
+  if (unit) {
+    return `${formattedNumber} ${unit}`
+  }
+
+  return String(formattedNumber)
+}
+
 export function MetricsPanel({ metrics = defaultMetrics }: MetricsPanelProps) {
   return (
     <div className="metrics-panel">
@@ -23,8 +55,7 @@ export function MetricsPanel({ metrics = defaultMetrics }: MetricsPanelProps) {
           <div key={index} className="metric-card">
             <span className="metric-label">{metric.label}</span>
             <div className="metric-value-row">
-              <span className="metric-value">{metric.value}</span>
-              {metric.unit && <span className="metric-unit">{metric.unit}</span>}
+              <span className="metric-value">{formatMetricValue(metric.value, metric.unit)}</span>
             </div>
           </div>
         ))}
