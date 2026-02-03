@@ -64,32 +64,47 @@ html, body, #root {
   gap: 8px;
 }
 
-/* Image-based icon buttons */
+/* Image-based icon buttons - override ALL global button styles */
 .icon-button-img {
   width: 44px;
   height: 44px;
   padding: 0;
   border: none;
-  background: transparent;
+  border-radius: 0;
+  background: transparent !important;
+  background-color: transparent !important;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.15s ease;
   position: relative;
+  outline: none;
+  box-shadow: none;
 }
 
 .icon-button-img:hover {
   transform: scale(1.08);
+  border-color: transparent;
+  background: transparent !important;
 }
 
 .icon-button-img:active {
   transform: scale(0.95);
+  background: transparent !important;
 }
 
 .icon-button-img:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+
+.icon-button-img:focus,
+.icon-button-img:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-color: transparent;
 }
 
 .button-icon {

@@ -161,7 +161,8 @@ function AppContent() {
       setMessages([])
     },
     onModeGenerating: (industry) => {
-      setModeGenerating(industry)
+      // Empty string means cancel
+      setModeGenerating(industry || null)
     },
     onInterrupt: () => {
       // User started speaking - reset assistant message ID so next response is new
@@ -265,6 +266,9 @@ function AppContent() {
       // Show loading indicator while new mode is being generated
       const payload = message.payload as { industry: string }
       setModeGenerating(payload.industry)
+    } else if (message.type === 'mode_generating_cancel') {
+      // Cancel mode generating indicator (false positive detection)
+      setModeGenerating(null)
     } else if (message.type === 'mode_switch') {
       // Clear the generating state
       setModeGenerating(null)
@@ -425,6 +429,10 @@ function AppContent() {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyPress}
             disabled={status !== 'connected'}
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
           />
           <button
             className="send-button"

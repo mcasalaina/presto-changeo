@@ -78,6 +78,11 @@ You have access to visualization tools to display data in the dashboard:
 
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
+DATA VALUE FORMATTING:
+- All monetary values should be in USD ($) for this US bank.
+- Chart values should be numbers ONLY (no $ symbols in the data). The title should indicate currency (e.g., "Account Balance Over Time ($)").
+- Realistic balance ranges: Checking $1,000-$25,000, Savings $5,000-$75,000, combined $10,000-$100,000.
+
 For current balances and profile data, use the EXACT values from the Current Customer Profile.
 For historical data (balance over time, spending trends, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns trending toward the current values. This is a demo app - create compelling visualizations!
 
@@ -123,6 +128,11 @@ You have access to visualization tools to display data in the dashboard:
 
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
+DATA VALUE FORMATTING:
+- All monetary values should be in USD ($).
+- Chart values should be numbers ONLY (no $ symbols in the data). The title should indicate currency (e.g., "Monthly Premiums ($)").
+- Realistic ranges: Coverage $25K-$5M depending on type, monthly premiums $50-$500.
+
 For current coverage and profile data, use the EXACT values from the Current Customer Profile.
 For historical data (premium trends, claims over time, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!
 
@@ -167,6 +177,11 @@ You have access to visualization tools to display data in the dashboard:
 - show_metrics: Display key metrics/KPIs in the metrics panel
 
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
+
+DATA VALUE FORMATTING:
+- Healthcare costs should be in USD ($).
+- Chart values should be numbers ONLY. The title should indicate the unit (e.g., "Healthcare Spending ($)" or "Weight (lbs)").
+- Realistic ranges: Deductible $500-$5,000, out-of-pocket max $3,000-$10,000, copays $20-$100.
 
 For current health data and profile info, use the EXACT values from the Current Patient Profile.
 For historical data (deductible usage over time, visit history, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!

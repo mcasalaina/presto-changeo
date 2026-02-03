@@ -217,7 +217,7 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                 }))
 
                             # Check for mode switch in voice transcript
-                            new_mode = await detect_mode_switch(transcript, websocket)
+                            new_mode = await detect_mode_switch(transcript, None)  # Don't pass websocket to avoid double loading
                             if new_mode:
                                 logger.info(f"Voice mode switch detected: {new_mode.name}")
                                 set_current_mode(new_mode.id)
@@ -269,6 +269,12 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                     "type": "response.create"
                                 }))
                                 logger.info("Triggered welcome response for new mode")
+                            elif might_be_mode_switch:
+                                # We showed loading but it wasn't a mode switch - cancel it
+                                await websocket.send_text(json.dumps({
+                                    "type": "mode_generating_cancel",
+                                    "payload": {}
+                                }))
 
                     elif event_type == "response.audio.delta":
                         # Audio chunk from assistant

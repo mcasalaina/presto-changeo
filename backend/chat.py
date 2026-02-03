@@ -212,6 +212,16 @@ Be generous in interpretation - if it sounds like they want to change the interf
         return None
 
 
+def _quick_presto_check(text: str) -> bool:
+    """
+    Fast local check for "presto" pattern to show loading indicator immediately.
+    Returns True if text looks like a mode switch command.
+    """
+    text_lower = text.lower()
+    presto_patterns = ["presto", "presto-change-o", "presto change", "presto,", "presto!"]
+    return any(pattern in text_lower for pattern in presto_patterns)
+
+
 async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> Mode | None:
     """
     Detect if the user is requesting a mode switch using LLM intent detection.
@@ -224,8 +234,21 @@ async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> M
         text: The user's input text
         websocket: Optional websocket to send loading notifications
     """
+    # Quick local check - show loading indicator IMMEDIATELY if "presto" detected
+    if _quick_presto_check(text) and websocket:
+        await websocket.send_text(json.dumps({
+            "type": "mode_generating",
+            "payload": {"industry": "new mode"}
+        }))
+
     industry = await _detect_mode_switch_intent(text)
     if not industry:
+        # Clear the loading indicator if we showed it but this wasn't actually a mode switch
+        if _quick_presto_check(text) and websocket:
+            await websocket.send_text(json.dumps({
+                "type": "mode_generating_cancel",
+                "payload": {}
+            }))
         return None
 
     logger.info(f"Mode switch intent detected for industry: {industry}")

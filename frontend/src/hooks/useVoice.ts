@@ -223,6 +223,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
           onModeGeneratingRef.current?.((message.payload as { industry: string }).industry)
           break
 
+        case 'mode_generating_cancel':
+          // Signal to clear the mode generating indicator (pass empty string)
+          onModeGeneratingRef.current?.('')
+          break
+
         case 'error':
           onErrorRef.current?.(message.error as string)
           break

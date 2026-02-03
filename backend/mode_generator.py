@@ -66,7 +66,20 @@ You have access to visualization tools to display data in the dashboard:
 
 IMPORTANT: When you use a visualization tool, you MUST ALWAYS also provide a brief text response describing what you're showing.
 
-For historical data (trends over time, usage patterns, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns. This is a demo app - create compelling visualizations!
+DATA VALUE FORMATTING:
+- For MONETARY values (sales, revenue, prices, account balances, costs): Use appropriate currency for the country/region. For US, use USD ($). For Mexico, use MXN (MX$). For UK, use GBP (£). For EU, use EUR (€). Format as integers or round to 2 decimals.
+- For COUNT values (number of customers, items, transactions): Use raw integers without currency symbols.
+- For PERCENTAGES: Use % symbol.
+- Chart values should be numbers ONLY (no symbols). The title should indicate the unit (e.g., "Monthly Sales (MX$)" or "Daily Visitors").
+
+REALISTIC DATA RANGES - generate data that matches real-world business scales:
+- Retail store daily sales: $5,000 - $50,000 USD (larger stores $100K+)
+- Monthly store sales: $150,000 - $1,500,000 USD
+- Supermarket monthly sales: $500,000 - $5,000,000 USD per store
+- Daily customer traffic: 500 - 5,000 visitors for retail
+- Account balances: $1,000 - $100,000 for personal, $100K - $10M for business
+
+For historical data (trends over time, usage patterns, etc.), generate plausible data going back 12 months with monthly data points, showing realistic patterns and growth trends. This is a demo app - create compelling visualizations!
 
 CHART PREFERENCE: For time-series data (anything "over time"), always use LINE charts with 12 monthly data points. Use BAR charts only for comparing discrete categories. Use PIE charts for showing composition/breakdown.
 
