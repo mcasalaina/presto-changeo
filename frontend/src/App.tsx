@@ -81,26 +81,28 @@ function AppContent() {
 
       const idRef = role === 'user' ? voiceUserIdRef : voiceAssistantIdRef
 
-      setMessages(prev => {
-        // Check ref inside callback to avoid race conditions
-        const currentId = idRef.current
-        const existingMsg = currentId ? prev.find(m => m.id === currentId) : null
+      // If no current message for this role, create the ID BEFORE setMessages
+      // This prevents race conditions where multiple deltas arrive before callback runs
+      if (!idRef.current) {
+        idRef.current = Date.now().toString()
+      }
+      const messageId = idRef.current
 
-        if (existingMsg && existingMsg.role === role) {
+      setMessages(prev => {
+        const existingMsg = prev.find(m => m.id === messageId)
+
+        if (existingMsg) {
           // Update existing message - replace placeholder or append
           return prev.map(msg => {
-            if (msg.id !== currentId) return msg
-            // If placeholder "...", replace it; otherwise append
+            if (msg.id !== messageId) return msg
             const newContent = msg.content === '...' ? text : msg.content + text
             return { ...msg, content: newContent }
           })
         }
 
-        // Start a new message for this role - set ref immediately before return
-        const newId = Date.now().toString()
-        idRef.current = newId
+        // Create new message with the pre-assigned ID
         return [...prev, {
-          id: newId,
+          id: messageId,
           role,
           content: text,
           timestamp: new Date()
