@@ -101,8 +101,8 @@ export function ChartRenderer({ chartType, title, data }: ChartRendererProps) {
   // Detect and handle multi-series data
   const { isMultiSeries, series, restructuredData } = detectMultiSeries(data)
 
-  // Custom tooltip formatter
-  const tooltipFormatter = (value: number) => formatValue(value)
+  // Custom tooltip formatter - handle undefined values from Recharts
+  const tooltipFormatter = (value: number | undefined) => formatValue(value ?? 0)
 
   // For multi-series line/area charts
   if ((chartType === 'line' || chartType === 'area') && isMultiSeries) {

@@ -8,7 +8,7 @@ import { VoiceToggle } from './components/VoiceToggle'
 import { ModeProvider, useMode } from './context/ModeContext'
 import type { Mode, Persona } from './types/mode'
 import type { Metric } from './components/MetricsPanel'
-import type { ConnectionState, WebSocketMessage } from './lib/websocket'
+import type { WebSocketMessage } from './lib/websocket'
 import { getMetricsFromPersona } from './lib/personaMetrics'
 import './App.css'
 
@@ -20,22 +20,44 @@ interface ChatMessage {
 }
 
 function AppContent() {
-  const { mode, setMode } = useMode()
+  const { mode, setMode, persona: contextPersona, isLoading } = useMode()
   const [inputValue, setInputValue] = useState('')
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your assistant at Meridian Trust Bank. How can I help you with your finances today?',
-      timestamp: new Date()
-    }
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [initialMessageSet, setInitialMessageSet] = useState(false)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isTyping, setIsTyping] = useState(false)
   const [modeGenerating, setModeGenerating] = useState<string | null>(null)
   const [visualization, setVisualization] = useState<React.ReactNode>(null)
-  const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(mode.defaultMetrics)
+  const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(undefined)
   const [persona, setPersona] = useState<Persona>(null)
+
+  // Sync persona from context when restored from backend
+  useEffect(() => {
+    if (contextPersona && !persona) {
+      setPersona(contextPersona)
+      setDashboardMetrics(getMetricsFromPersona(contextPersona, mode.id))
+    }
+  }, [contextPersona, persona, mode.id])
+
+  // Set default metrics when mode changes but no persona yet
+  useEffect(() => {
+    if (!persona && !contextPersona && !isLoading) {
+      setDashboardMetrics(mode.defaultMetrics)
+    }
+  }, [mode, persona, contextPersona, isLoading])
+
+  // Set initial welcome message after state is loaded
+  useEffect(() => {
+    if (!isLoading && !initialMessageSet) {
+      setMessages([{
+        id: '1',
+        role: 'assistant',
+        content: `Hello! I'm your assistant at ${mode.companyName}. How can I help you today?`,
+        timestamp: new Date()
+      }])
+      setInitialMessageSet(true)
+    }
+  }, [isLoading, initialMessageSet, mode.companyName])
   const streamingIdRef = useRef<string | null>(null)
   const voiceUserIdRef = useRef<string | null>(null)
   const voiceAssistantIdRef = useRef<string | null>(null)
@@ -131,7 +153,7 @@ function AppContent() {
         }
         persona?: Persona
       }
-      const modePayload = payload as BackendModePayload
+      const modePayload = payload as unknown as BackendModePayload
       const newMode: Mode = {
         id: modePayload.mode.id,
         name: modePayload.mode.name,
@@ -334,15 +356,6 @@ function AppContent() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
-
-  const getStatusColor = (status: ConnectionState): string => {
-    switch (status) {
-      case 'connected': return '#22c55e'
-      case 'connecting': return '#facc15'
-      case 'error': return '#f87171'
-      default: return '#94a3b8'
-    }
-  }
 
   const handleSendMessage = () => {
     if (!inputValue.trim() || status !== 'connected') return

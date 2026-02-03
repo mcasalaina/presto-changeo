@@ -17,6 +17,7 @@ const defaultMetrics: Metric[] = [
 
 /**
  * Format a metric value with its unit, handling currency as prefix.
+ * Integers are displayed without decimals, floats keep their precision.
  */
 function formatMetricValue(value: string | number, unit?: string): string {
   // If value is already a formatted string (e.g., "$24,856.42"), return as-is
@@ -25,9 +26,17 @@ function formatMetricValue(value: string | number, unit?: string): string {
   }
 
   // Format number with thousands separators
-  const formattedNumber = typeof value === 'number'
-    ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : value
+  // Only show decimals if the value has them (not a whole number)
+  let formattedNumber: string
+  if (typeof value === 'number') {
+    const isWholeNumber = Number.isInteger(value)
+    formattedNumber = value.toLocaleString('en-US', {
+      minimumFractionDigits: isWholeNumber ? 0 : 2,
+      maximumFractionDigits: isWholeNumber ? 0 : 2
+    })
+  } else {
+    formattedNumber = value
+  }
 
   // Handle currency prefix
   if (unit === '$') {

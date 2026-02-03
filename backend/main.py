@@ -13,8 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from azure.ai.inference.models import SystemMessage, UserMessage
 
 from auth import get_inference_client
-from chat import handle_chat_message, clear_history
+from chat import handle_chat_message, clear_history, ensure_persona, get_session_seed
 from voice import handle_voice_session
+from modes import get_current_mode
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 
@@ -91,6 +92,29 @@ app.add_middleware(
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "presto-changeo"}
+
+
+@app.get("/api/state")
+async def get_state():
+    """
+    Get the current application state (mode + persona).
+    Called by frontend on startup to restore previous session.
+    """
+    current_mode = get_current_mode()
+    persona = ensure_persona(current_mode.id)
+
+    return {
+        "mode": {
+            "id": current_mode.id,
+            "name": current_mode.name,
+            "company_name": current_mode.company_name,
+            "tagline": current_mode.tagline,
+            "theme": current_mode.theme.model_dump(),
+            "tabs": [tab.model_dump() for tab in current_mode.tabs],
+            "defaultMetrics": [m.model_dump() for m in current_mode.default_metrics]
+        },
+        "persona": persona
+    }
 
 
 @app.websocket("/ws")
