@@ -423,9 +423,12 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
   /**
    * Toggle mute - stop/start sending audio but keep connection alive
+   * Updates ref immediately to prevent race conditions with audio processing
    */
   const toggleMute = useCallback(() => {
-    setIsMuted(prev => !prev)
+    const newMuted = !isMutedRef.current
+    isMutedRef.current = newMuted  // Update ref immediately for audio processor
+    setIsMuted(newMuted)  // Update state for UI
   }, [])
 
   // Cleanup on unmount

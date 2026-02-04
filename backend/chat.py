@@ -33,6 +33,58 @@ _conversation_history: list = []
 # Current persona state (module-level, similar to conversation history)
 _current_persona: dict = {}
 
+# Response cache: {cache_key: {"response": str, "tool_results": list, "timestamp": float}}
+# Cache key is hash of (mode_id, normalized_query)
+_response_cache: dict = {}
+_CACHE_MAX_SIZE = 50  # Max cached responses
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+
+
+def _normalize_query(text: str) -> str:
+    """Normalize query for cache lookup - lowercase, strip whitespace, remove punctuation."""
+    import re
+    return re.sub(r'[^\w\s]', '', text.lower().strip())
+
+
+def _get_cache_key(mode_id: str, query: str) -> str:
+    """Generate cache key from mode and normalized query."""
+    normalized = _normalize_query(query)
+    return hashlib.md5(f"{mode_id}:{normalized}".encode()).hexdigest()
+
+
+def _get_cached_response(mode_id: str, query: str) -> dict | None:
+    """Get cached response if available and not expired."""
+    import time
+    cache_key = _get_cache_key(mode_id, query)
+    if cache_key in _response_cache:
+        cached = _response_cache[cache_key]
+        if time.time() - cached["timestamp"] < _CACHE_TTL_SECONDS:
+            logger.info(f"Cache HIT for query: {query[:50]}...")
+            return cached
+        else:
+            # Expired - remove from cache
+            del _response_cache[cache_key]
+    return None
+
+
+def _cache_response(mode_id: str, query: str, response: str, tool_results: list) -> None:
+    """Cache a response for future reuse."""
+    import time
+    global _response_cache
+
+    # Evict oldest entries if cache is full
+    if len(_response_cache) >= _CACHE_MAX_SIZE:
+        oldest_key = min(_response_cache.keys(), key=lambda k: _response_cache[k]["timestamp"])
+        del _response_cache[oldest_key]
+
+    cache_key = _get_cache_key(mode_id, query)
+    _response_cache[cache_key] = {
+        "response": response,
+        "tool_results": tool_results,
+        "timestamp": time.time()
+    }
+    logger.info(f"Cached response for query: {query[:50]}...")
+
 
 def get_session_seed() -> int:
     """
@@ -61,6 +113,13 @@ def add_to_history(role: str, content: str) -> None:
 def clear_history() -> None:
     """Clear conversation history."""
     _conversation_history.clear()
+
+
+def clear_cache() -> None:
+    """Clear the response cache."""
+    global _response_cache
+    _response_cache.clear()
+    logger.info("Response cache cleared")
 
 
 def ensure_persona(mode_id: str) -> dict:
@@ -155,14 +214,10 @@ Use these EXACT values when creating charts or responding about customer data.""
         else:
             persona_context = ""
 
-    # Add universal rules that apply to ALL modes
+    # Add universal rules that apply to ALL modes - kept brief for speed
     universal_rules = """
 
-ABSOLUTE RULES - VIOLATION IS FORBIDDEN:
-- NEVER say "I don't have", "sample", "demo", "hypothetical", "simulated", "for demonstration", "let me generate", or similar phrases.
-- NEVER ask "would you like me to" or offer to adjust. Just show the data.
-- ONE sentence response max when showing charts. Example: "Here's your balance trend."
-- Chart data MUST use profile values. Most recent month = current value from profile. NEVER show zeros."""
+RULES: Never say "sample/demo/hypothetical". One sentence max with charts. Use profile values. No zeros."""
 
     if persona_context:
         return f"{base}\n\n{persona_context}{universal_rules}"
@@ -187,25 +242,7 @@ async def _detect_mode_switch_intent(text: str) -> str | None:
         response = client.complete(
             model=MODEL_DEPLOYMENT,
             messages=[
-                SystemMessage(content="""You are a mode switch detector for the Presto-Change-O app.
-Your job is to determine if the user wants to switch the app to a different industry mode.
-
-Mode switch phrases include variations like:
-- "Presto-Change-O, you're a [industry]"
-- "presto chango you're a [industry]"
-- "presto [industry]" (just the word presto followed by an industry)
-- "presto, be a [industry]"
-- "transform into a [industry]"
-- "switch to [industry] mode"
-- "be a [industry]"
-
-The key trigger word is "presto" (or variations like "presto-change-o", "presto chango").
-If you hear "presto" followed by ANY industry or business type, that's a mode switch request.
-
-If the user is requesting a mode switch, respond with ONLY the industry name (e.g., "bank", "florist", "pet store", "healthcare provider").
-If the user is NOT requesting a mode switch, respond with exactly "NONE".
-
-Be generous in interpretation - if it sounds like they want to change the interface theme/industry, extract the industry."""),
+                SystemMessage(content="""Detect mode switch requests. If user says "presto [industry]" or similar, respond with ONLY the industry name. Otherwise respond "NONE"."""),
                 UserMessage(content=text)
             ],
         )
@@ -326,7 +363,7 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
 
     # Check for mode switch command
     global _current_persona
-    new_mode = await detect_mode_switch(text)
+    new_mode = await detect_mode_switch(text, websocket)
     if new_mode:
         # Set current mode using the returned Mode object
         set_current_mode(new_mode.id)
@@ -372,6 +409,44 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
             "type": "chat_chunk",
             "payload": {"text": "", "done": True}
         }))
+        return
+
+    # Check cache for this query
+    current_mode = get_current_mode()
+    cached = _get_cached_response(current_mode.id, text)
+    if cached:
+        # Cache hit - replay cached response without calling LLM
+        await websocket.send_text(json.dumps({
+            "type": "chat_start",
+            "payload": {}
+        }))
+
+        # Send cached text response
+        if cached["response"]:
+            await websocket.send_text(json.dumps({
+                "type": "chat_chunk",
+                "payload": {"text": cached["response"], "done": False}
+            }))
+
+        # Send cached tool results
+        for tool_result in cached["tool_results"]:
+            await websocket.send_text(json.dumps({
+                "type": "tool_result",
+                "payload": tool_result
+            }))
+
+        # Signal completion
+        await websocket.send_text(json.dumps({
+            "type": "chat_chunk",
+            "payload": {"text": "", "done": True}
+        }))
+
+        # Add to history for context
+        add_to_history("user", text)
+        if cached["response"]:
+            add_to_history("assistant", cached["response"])
+
+        logger.info(f"Returned cached response for: {text[:50]}...")
         return
 
     # Notify frontend that response is starting
@@ -460,7 +535,8 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
         if full_response:
             add_to_history("assistant", full_response)
 
-        # Process completed tool calls
+        # Process completed tool calls and collect results for caching
+        tool_results_for_cache = []
         logger.info(f"Processing {len(tool_calls)} tool call(s): {[(idx, tc['name']) for idx, tc in tool_calls.items()]}")
         for idx in sorted(tool_calls.keys()):
             tool_call = tool_calls[idx]
@@ -476,6 +552,9 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
 
                     # Execute the tool
                     result = execute_tool(tool_name, arguments)
+
+                    # Collect for caching
+                    tool_results_for_cache.append({"tool": tool_name, "result": result})
 
                     # Send tool result to frontend
                     await websocket.send_text(json.dumps({
@@ -528,6 +607,9 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                             }))
                     except Exception as e2:
                         logger.error(f"Recovery also failed: {e2}")
+
+        # Cache the response for future reuse
+        _cache_response(current_mode.id, text, full_response, tool_results_for_cache)
 
         # Signal completion
         await websocket.send_text(json.dumps({

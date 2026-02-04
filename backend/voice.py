@@ -213,7 +213,7 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                 # Send loading indicator to frontend
                                 await websocket.send_text(json.dumps({
                                     "type": "mode_generating",
-                                    "payload": {"industry": ""}
+                                    "payload": {"industry": "new mode"}
                                 }))
 
                             # Check for mode switch in voice transcript

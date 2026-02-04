@@ -200,6 +200,20 @@ def _save_state() -> None:
         logger.warning(f"Failed to save mode state: {e}")
 
 
+def _sanitize_presto(text: str) -> str:
+    """Remove any variation of 'presto' from text - it's a trigger word, not a company name."""
+    import re
+    patterns = [
+        r'\bpresto[-\s]?change[-\s]?o\b',
+        r'\bpresto[-\s]?changer\b',
+        r'\bpresto\b',
+    ]
+    result = text
+    for pattern in patterns:
+        result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+    return re.sub(r'\s+', ' ', result).strip()
+
+
 def _load_state() -> None:
     """Load persisted mode state from disk."""
     global _current_mode, _generated_modes
@@ -207,8 +221,16 @@ def _load_state() -> None:
         if STATE_FILE.exists():
             state = json.loads(STATE_FILE.read_text())
             _current_mode = state.get("current_mode", "banking")
-            # Restore generated modes
+            # Restore generated modes, sanitizing company names
             for mode_id, mode_data in state.get("generated_modes", {}).items():
+                # CRITICAL: Strip "presto" from any company names on load
+                if 'company_name' in mode_data:
+                    original = mode_data['company_name']
+                    mode_data['company_name'] = _sanitize_presto(original)
+                    if len(mode_data['company_name']) < 3:
+                        mode_data['company_name'] = f"{mode_data.get('name', 'Business')} Co."
+                    if mode_data['company_name'] != original:
+                        logger.warning(f"Sanitized loaded company_name: '{original}' -> '{mode_data['company_name']}'")
                 _generated_modes[mode_id] = Mode(**mode_data)
             logger.info(f"Restored mode state: {_current_mode} ({len(_generated_modes)} generated modes)")
     except Exception as e:

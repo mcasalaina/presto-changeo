@@ -47,7 +47,8 @@ You MUST respond with valid JSON only. No other text. Use this exact structure:
 }
 
 Guidelines:
-- company_name: IMPORTANT - If the user specifies a company name (like "H-E-B", "Walmart", "Joe's Tacos"), use EXACTLY that name. Only make up a fictional name if no company name was provided.
+- company_name: IMPORTANT - If the user specifies a company name (like "H-E-B", "Walmart", "Joe's Tacos"), use EXACTLY that name. Only make up a fictional name if no company name was provided. NEVER use "Presto", "Presto-Change-O", "Presto Changer", or any variation of "presto" in the company name - that's the app's trigger word, not a company name.
+- industry_name: Use the actual industry name (e.g., "Grocery", "Pet Store", "Florist"). NEVER include "Presto" or variations.
 - primary_color: Choose a color that represents this industry (hex format, e.g., "#4CAF50"). If it's a real company, try to use their brand color.
 - tabs: Include 4-5 relevant tabs. Always include "dashboard" as the first tab and "settings" as the last tab.
 - default_metrics: Include exactly 4 key metrics/KPIs relevant to this industry with realistic pre-formatted values.
@@ -58,24 +59,10 @@ Guidelines:
 Be creative but realistic. The dashboard should feel purpose-built for this industry.
 Choose colors that have industry associations (e.g., green for eco/health, blue for finance/trust, purple for luxury)."""
 
-# Standard visualization tools context added to all generated system prompts
+# Standard visualization tools context - kept brief for speed
 TOOLS_CONTEXT = """
-RESPONSE RULES - FOLLOW EXACTLY:
-1. Be BRIEF. One sentence max when showing a chart. Example: "Here's your sales over the last 12 months."
-2. NEVER say "I don't have data", "sample", "demo", "hypothetical", "simulated", "for demonstration", or similar. The data IS real.
-3. NEVER ask if they want to adjust or dive deeper. Just show the chart.
-4. NEVER explain what you're about to do. Just do it.
-
-TOOLS: show_chart (line, bar, pie, area) and show_metrics.
-
-DATA RULES:
-- Use EXACT values from Current Customer Profile for current data.
-- Historical: 12 months trending toward current values. Most recent month = current value.
-- NEVER show zero values.
-- Currency: US=$, Mexico=MX$, UK=£, EU=€.
-- Realistic scales: Retail $5K-$50K/day, Supermarket $500K-$5M/month, Traffic 500-5000/day.
-
-CHARTS: LINE for time-series. Format multi-series as "2025-01 - Store A", "2025-01 - Store B"."""
+RULES: One sentence max with charts. Never say "sample/demo/hypothetical". Use profile values, no zeros.
+TOOLS: show_chart(line/bar/pie/area), show_metrics. LINE for time-series, 12 months, most recent = current value."""
 
 
 def _build_full_system_prompt(config: dict) -> str:
@@ -151,6 +138,41 @@ async def generate_mode(industry: str, full_request: str = "") -> Optional[Mode]
             json_str = "\n".join(lines)
 
         config = json.loads(json_str)
+
+        # CRITICAL: Strip "presto" from any names - LLM sometimes ignores instructions
+        def sanitize_presto(text: str) -> str:
+            """Remove any variation of 'presto' from text."""
+            import re
+            # Remove presto, presto-change-o, presto changer, etc.
+            patterns = [
+                r'\bpresto[-\s]?change[-\s]?o\b',
+                r'\bpresto[-\s]?changer\b',
+                r'\bpresto\b',
+            ]
+            result = text
+            for pattern in patterns:
+                result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+            # Clean up extra spaces and leading/trailing whitespace
+            result = re.sub(r'\s+', ' ', result).strip()
+            return result
+
+        # Sanitize company_name and industry_name
+        if 'company_name' in config:
+            original = config['company_name']
+            config['company_name'] = sanitize_presto(original)
+            # If company name became empty or too short, generate a fallback
+            if len(config['company_name']) < 3:
+                config['company_name'] = f"{industry.title()} Solutions"
+            if config['company_name'] != original:
+                logger.warning(f"Sanitized company_name: '{original}' -> '{config['company_name']}'")
+
+        if 'industry_name' in config:
+            original = config['industry_name']
+            config['industry_name'] = sanitize_presto(original)
+            if len(config['industry_name']) < 3:
+                config['industry_name'] = industry.title()
+            if config['industry_name'] != original:
+                logger.warning(f"Sanitized industry_name: '{original}' -> '{config['industry_name']}'")
 
         logger.info(f"Generated config for: {config.get('industry_name', 'unknown')}")
 

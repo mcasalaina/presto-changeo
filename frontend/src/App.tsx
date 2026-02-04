@@ -46,6 +46,11 @@ function AppContent() {
     }
   }, [mode, persona, contextPersona, isLoading])
 
+  // Update browser tab title when company name changes
+  useEffect(() => {
+    document.title = mode.companyName
+  }, [mode.companyName])
+
   // Set initial welcome message after state is loaded
   useEffect(() => {
     if (!isLoading && !initialMessageSet) {
@@ -62,6 +67,8 @@ function AppContent() {
   const voiceUserIdRef = useRef<string | null>(null)
   const voiceAssistantIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Block all incoming messages during mode switch to prevent old content leaking through
+  const isSwitchingModeRef = useRef(false)
 
   // Voice hook for voice mode integration
   const {
@@ -75,6 +82,9 @@ function AppContent() {
     toggleMute: toggleVoiceMute
   } = useVoice({
     onTranscript: (role, text) => {
+      // Block all transcripts during mode switch to prevent old content leaking
+      if (isSwitchingModeRef.current) return
+
       // Accumulate transcript deltas into a single message per role
       // Track user and assistant separately so they don't interrupt each other
       if (!text) return
@@ -173,20 +183,52 @@ function AppContent() {
         systemPrompt: '',
         defaultMetrics: modePayload.mode.defaultMetrics,
       }
+      // Keep blocking - old transcript chunks may still arrive after mode_switch
+      // We'll unblock after a delay to let them drain
+      streamingIdRef.current = null
+      voiceUserIdRef.current = null
+      voiceAssistantIdRef.current = null
+      setIsTyping(false)
+
       setMode(newMode)
       setVisualization(null)
       setModeGenerating(null)  // Clear loading indicator
+
+      // Set up dashboard like New Conversation: use mode's default metrics
+      setDashboardMetrics(newMode.defaultMetrics)
       if (modePayload.persona) {
         setPersona(modePayload.persona)
-        setDashboardMetrics(getMetricsFromPersona(modePayload.persona, newMode.id))
-      } else {
-        setDashboardMetrics(newMode.defaultMetrics)
       }
-      setMessages([])
+
+      // Set welcome message like New Conversation does
+      setMessages([{
+        id: '1',
+        role: 'assistant',
+        content: `Hello! I'm your assistant at ${newMode.companyName}. How can I help you today?`,
+        timestamp: new Date()
+      }])
+
+      // Keep blocking for 1 second to let any in-flight old messages drain
+      // Only then allow new messages through
+      setTimeout(() => {
+        isSwitchingModeRef.current = false
+      }, 1000)
     },
     onModeGenerating: (industry) => {
-      // Empty string means cancel
-      setModeGenerating(industry || null)
+      if (industry) {
+        // Mode switch starting - block all incoming messages immediately
+        isSwitchingModeRef.current = true
+        streamingIdRef.current = null
+        voiceUserIdRef.current = null
+        voiceAssistantIdRef.current = null
+        setIsTyping(false)
+        setMessages([])  // Clear immediately so old content can't leak through
+        setModeGenerating(industry)
+      } else {
+        // Empty string means cancel (false positive)
+        isSwitchingModeRef.current = false
+        setModeGenerating(null)
+      }
     },
     onInterrupt: () => {
       // User started speaking - reset assistant message ID so next response is new
@@ -197,6 +239,9 @@ function AppContent() {
       // The transcript handler will fill in the placeholder
     },
     onUserSpeechStart: () => {
+      // Block during mode switch
+      if (isSwitchingModeRef.current) return
+
       // Clean up any stale placeholder from previous speech that never got a transcript
       const oldId = voiceUserIdRef.current
       if (oldId) {
@@ -219,6 +264,9 @@ function AppContent() {
   // Handle incoming WebSocket messages via callback (avoids state batching issues)
   const handleMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'chat_start') {
+      // Block during mode switch to prevent old content leaking
+      if (isSwitchingModeRef.current) return
+
       // AI is starting to respond - show typing indicator and create placeholder message
       setIsTyping(true)
       const newId = Date.now().toString()
@@ -230,6 +278,9 @@ function AppContent() {
         timestamp: new Date()
       }])
     } else if (message.type === 'chat_chunk') {
+      // Block during mode switch to prevent old content leaking
+      if (isSwitchingModeRef.current) return
+
       const { text, done } = message.payload as { text: string; done: boolean }
       if (done) {
         // Streaming complete - remove empty messages (when AI only used tools without text)
@@ -287,13 +338,26 @@ function AppContent() {
         setDashboardMetrics(metricsResult.metrics)
       }
     } else if (message.type === 'mode_generating') {
-      // Show loading indicator while new mode is being generated
+      // Mode switch starting - block all incoming messages immediately
       const payload = message.payload as { industry: string }
+      isSwitchingModeRef.current = true
+      streamingIdRef.current = null
+      voiceUserIdRef.current = null
+      voiceAssistantIdRef.current = null
+      setIsTyping(false)
+      setMessages([])  // Clear immediately so old content can't leak through
       setModeGenerating(payload.industry)
     } else if (message.type === 'mode_generating_cancel') {
       // Cancel mode generating indicator (false positive detection)
+      isSwitchingModeRef.current = false
       setModeGenerating(null)
     } else if (message.type === 'mode_switch') {
+      // Keep blocking - old chunks may still arrive after mode_switch
+      streamingIdRef.current = null
+      voiceUserIdRef.current = null
+      voiceAssistantIdRef.current = null
+      setIsTyping(false)
+
       // Clear the generating state
       setModeGenerating(null)
       // Handle mode switch from backend
@@ -338,17 +402,25 @@ function AppContent() {
       setMode(newMode)
       // Clear visualization on mode switch
       setVisualization(null)
-      // Update persona and derive metrics from persona data for consistency
+
+      // Set up dashboard like New Conversation: use mode's default metrics
+      setDashboardMetrics(newMode.defaultMetrics)
       if (payload.persona) {
         setPersona(payload.persona)
-        // Use persona-derived metrics so dashboard matches PersonaCard
-        setDashboardMetrics(getMetricsFromPersona(payload.persona, newMode.id))
-      } else {
-        // Fallback to static defaults if no persona
-        setDashboardMetrics(newMode.defaultMetrics)
       }
-      // Clear messages and add welcome message (backend will send welcome text via chat_chunk)
-      setMessages([])
+
+      // Set welcome message like New Conversation does
+      setMessages([{
+        id: '1',
+        role: 'assistant',
+        content: `Hello! I'm your assistant at ${newMode.companyName}. How can I help you today?`,
+        timestamp: new Date()
+      }])
+
+      // Keep blocking for 1 second to let any in-flight old messages drain
+      setTimeout(() => {
+        isSwitchingModeRef.current = false
+      }, 1000)
     }
   }, [setMode])
 
@@ -470,7 +542,7 @@ function AppContent() {
           <div className="mode-generating-overlay">
             <div className="mode-generating-content">
               <div className="mode-generating-spinner"></div>
-              <p>{modeGenerating ? `Generating ${modeGenerating} mode...` : 'Generating new mode...'}</p>
+              <p>{modeGenerating === 'new mode' ? 'Generating new mode...' : `Generating ${modeGenerating} mode...`}</p>
             </div>
           </div>
         )}
