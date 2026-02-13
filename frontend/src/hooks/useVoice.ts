@@ -223,6 +223,14 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
           onModeGeneratingRef.current?.((message.payload as { industry: string }).industry)
           break
 
+        case 'visualization_generating':
+          // Loading indicator for async visualization generation
+          onToolResultRef.current?.(
+            '_generating',
+            { vis_type: message.vis_type as string, description: message.description as string }
+          )
+          break
+
         case 'mode_generating_cancel':
           // Signal to clear the mode generating indicator (pass empty string)
           onModeGeneratingRef.current?.('')

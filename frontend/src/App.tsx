@@ -120,8 +120,16 @@ function AppContent() {
       })
     },
     onToolResult: (tool, result) => {
-      // Reuse existing tool result handling (chart rendering)
-      if (tool === 'show_chart') {
+      if (tool === '_generating') {
+        // Show loading spinner while background visualization generates
+        const { vis_type } = result as { vis_type: string; description: string }
+        setVisualization(
+          <div className="visualization-loading">
+            <div className="visualization-loading-spinner"></div>
+            <p>Generating {vis_type === 'metrics' ? 'metrics' : 'chart'}...</p>
+          </div>
+        )
+      } else if (tool === 'show_chart') {
         const chartResult = result as {
           chart_type: 'line' | 'bar' | 'pie' | 'area'
           title: string

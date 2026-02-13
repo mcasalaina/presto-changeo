@@ -78,6 +78,31 @@ TOOL_DEFINITIONS = [
 ]
 
 
+VOICE_TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "request_visualization",
+            "description": "Request a visualization for the dashboard. The chart/metrics will appear shortly. KEEP TALKING naturally about the data while it loads.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "vis_type": {
+                        "type": "string",
+                        "enum": ["chart", "metrics"],
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Brief description of what to show (e.g. 'monthly revenue trend')"
+                    }
+                },
+                "required": ["vis_type", "description"]
+            }
+        }
+    }
+]
+
+
 def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """
     Execute a tool by name with the given arguments.

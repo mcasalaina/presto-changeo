@@ -1,18 +1,22 @@
 """
 Voice Handler Module
 Handles voice sessions with gpt-realtime via bidirectional WebSocket relay.
+Supports async visualization generation via background Chat API calls.
 """
 import asyncio
 import json
 import logging
 import os
+import re
 from typing import Any
 
 import websockets
 from fastapi import WebSocket
 
-from auth import get_azure_credential
-from tools import TOOL_DEFINITIONS, execute_tool
+from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage
+
+from auth import get_azure_credential, get_inference_client
+from tools import TOOL_DEFINITIONS, VOICE_TOOL_DEFINITIONS, execute_tool
 from modes import get_current_mode, set_current_mode
 from chat import build_system_prompt, ensure_persona, detect_mode_switch, get_session_seed
 from persona import generate_persona
@@ -22,18 +26,74 @@ logger = logging.getLogger(__name__)
 # Azure configuration
 AZURE_ENDPOINT = os.getenv("AZURE_PROJECT_ENDPOINT", "")
 REALTIME_DEPLOYMENT = os.getenv("AZURE_REALTIME_DEPLOYMENT", "gpt-realtime")
+MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 REALTIME_API_VERSION = "2025-04-01-preview"
+
+MAX_TRANSCRIPT_HISTORY = 20
+
+
+class VoiceSessionState:
+    """Tracks state for an active voice session."""
+
+    def __init__(self):
+        self.transcript_history: list[dict] = []
+        self.model_is_responding: bool = False
+        self.pending_visualizations: dict[str, asyncio.Task] = {}
+        self.deferred_notifications: list[dict] = []
+
+    def add_transcript(self, role: str, text: str) -> None:
+        """Add a transcript entry to rolling conversation history.
+
+        For user messages: each call adds a new complete message.
+        For assistant messages: use append_assistant_delta() instead
+        since transcripts arrive as streaming deltas.
+        """
+        if not text or not text.strip():
+            return
+        self.transcript_history.append({"role": role, "content": text})
+        # Keep last N messages
+        if len(self.transcript_history) > MAX_TRANSCRIPT_HISTORY:
+            self.transcript_history.pop(0)
+
+    def append_assistant_delta(self, text: str) -> None:
+        """Append a delta chunk to the current assistant message.
+
+        Assistant transcripts arrive as many small deltas. This accumulates
+        them into a single transcript entry.
+        """
+        if not text:
+            return
+        if (self.transcript_history
+                and self.transcript_history[-1]["role"] == "assistant"):
+            self.transcript_history[-1]["content"] += text
+        else:
+            self.transcript_history.append({"role": "assistant", "content": text})
+            if len(self.transcript_history) > MAX_TRANSCRIPT_HISTORY:
+                self.transcript_history.pop(0)
+
+    def get_chat_messages(self) -> list[dict]:
+        """Get transcript history formatted for Chat API messages."""
+        return list(self.transcript_history)
+
+    def cancel_all_pending(self) -> None:
+        """Cancel all pending background visualization tasks."""
+        for vis_type, task in self.pending_visualizations.items():
+            if not task.done():
+                task.cancel()
+                logger.info(f"Cancelled pending visualization: {vis_type}")
+        self.pending_visualizations.clear()
+        self.deferred_notifications.clear()
 
 
 def build_realtime_tools() -> list[dict[str, Any]]:
     """
-    Convert TOOL_DEFINITIONS to gpt-realtime format.
+    Convert VOICE_TOOL_DEFINITIONS to gpt-realtime format.
 
-    gpt-realtime uses a slightly different tool format than chat completions.
-    The structure is the same but nested under 'function' key.
+    Uses lightweight request_visualization tool instead of heavy show_chart/show_metrics
+    to minimize token generation time during voice responses.
     """
     realtime_tools = []
-    for tool in TOOL_DEFINITIONS:
+    for tool in VOICE_TOOL_DEFINITIONS:
         if tool.get("type") == "function":
             realtime_tools.append({
                 "type": "function",
@@ -42,6 +102,183 @@ def build_realtime_tools() -> list[dict[str, Any]]:
                 "parameters": tool["function"]["parameters"]
             })
     return realtime_tools
+
+
+def build_voice_system_prompt(base_prompt: str) -> str:
+    """
+    Modify system prompt for voice mode by replacing tool references.
+
+    Replaces 'TOOLS: show_chart ... show_metrics' line with voice-specific
+    instructions to use request_visualization and keep talking.
+    """
+    # Replace the TOOLS line with voice-specific instructions
+    voice_tools_instruction = (
+        "TOOLS: Use request_visualization to show charts or metrics. "
+        "After requesting, KEEP TALKING about the data - don't wait for it to load."
+    )
+    # Match both pre-built mode format "TOOLS: show_chart (...) and show_metrics."
+    # and generated mode format "TOOLS: show_chart(...), show_metrics. ..."
+    modified = re.sub(
+        r"TOOLS:.*?show_chart.*?show_metrics\..*",
+        voice_tools_instruction,
+        base_prompt
+    )
+    return modified
+
+
+async def _generate_visualization_background(
+    session_state: VoiceSessionState,
+    vis_type: str,
+    description: str,
+    websocket: WebSocket,
+    realtime_ws: Any,
+) -> None:
+    """
+    Background task: call Chat Completions API to generate actual chart/metrics data.
+
+    1. Builds Chat API request with conversation context + full TOOL_DEFINITIONS
+    2. Calls inference API (non-streaming, via asyncio.to_thread)
+    3. Extracts tool calls, runs execute_tool()
+    4. Sends tool_result to frontend
+    5. Queues notification for voice model
+    """
+    try:
+        current_mode = get_current_mode()
+        persona = ensure_persona(current_mode.id)
+        system_prompt = build_system_prompt(current_mode, persona)
+
+        # Build messages: system prompt + conversation transcript + visualization request
+        messages = [SystemMessage(content=system_prompt)]
+        for msg in session_state.get_chat_messages():
+            if msg["role"] == "user":
+                messages.append(UserMessage(content=msg["content"]))
+            else:
+                messages.append(AssistantMessage(content=msg["content"]))
+
+        # Add explicit instruction for what to generate
+        if vis_type == "chart":
+            messages.append(UserMessage(content=f"Show me a chart: {description}. Use the show_chart tool."))
+        else:
+            messages.append(UserMessage(content=f"Show me metrics: {description}. Use the show_metrics tool."))
+
+        logger.info(f"Background viz: calling Chat API with {len(messages)} messages for '{description}'")
+
+        client = get_inference_client()
+
+        # Run synchronous API call in thread to avoid blocking event loop
+        response = await asyncio.to_thread(
+            client.complete,
+            model=MODEL_DEPLOYMENT,
+            messages=messages,
+            tools=TOOL_DEFINITIONS,
+        )
+
+        # Check if task was cancelled while waiting
+        if asyncio.current_task().cancelled():
+            return
+
+        # Extract tool calls from response
+        choice = response.choices[0]
+        tool_results = []
+
+        if choice.message.tool_calls:
+            for tool_call in choice.message.tool_calls:
+                tool_name = tool_call.function.name
+                try:
+                    arguments = json.loads(tool_call.function.arguments)
+                    result = execute_tool(tool_name, arguments)
+                    tool_results.append({"tool": tool_name, "result": result})
+                    logger.info(f"Background viz: executed {tool_name}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Background viz: failed to parse args for {tool_name}: {e}")
+
+        if not tool_results:
+            logger.warning(f"Background viz: no tool calls in response for '{description}'")
+            return
+
+        # Send tool results to frontend
+        for tr in tool_results:
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "tool_result",
+                    "tool": tr["tool"],
+                    "result": tr["result"]
+                }))
+                logger.info(f"Background viz: sent {tr['tool']} result to frontend")
+            except Exception as e:
+                logger.error(f"Background viz: failed to send to frontend: {e}")
+                return
+
+        # Build a summary for the voice model notification
+        summary_parts = []
+        for tr in tool_results:
+            if tr["tool"] == "show_chart":
+                summary_parts.append(f"A {tr['result'].get('chart_type', '')} chart titled '{tr['result'].get('title', '')}' is now showing on the dashboard.")
+            elif tr["tool"] == "show_metrics":
+                metric_names = [m.get("label", "") for m in tr["result"].get("metrics", [])]
+                summary_parts.append(f"Metrics are now showing: {', '.join(metric_names)}.")
+        summary = " ".join(summary_parts)
+
+        # Queue notification for voice model
+        await _notify_voice_model(session_state, realtime_ws, summary)
+
+    except asyncio.CancelledError:
+        logger.info(f"Background viz cancelled for '{description}'")
+        raise
+    except Exception as e:
+        logger.error(f"Background viz error for '{description}': {e}")
+    finally:
+        # Remove from pending
+        session_state.pending_visualizations.pop(vis_type, None)
+
+
+async def _notify_voice_model(
+    session_state: VoiceSessionState,
+    realtime_ws: Any,
+    summary: str,
+) -> None:
+    """
+    Notify the voice model that visualization data is now showing.
+
+    If model is idle: inject context and trigger response immediately.
+    If model is speaking: defer notification until response.done fires.
+    """
+    if not summary:
+        return
+
+    notification = {
+        "summary": summary,
+    }
+
+    if session_state.model_is_responding:
+        # Defer until model finishes current response
+        session_state.deferred_notifications.append(notification)
+        logger.info("Voice model busy - deferred visualization notification")
+    else:
+        # Send immediately
+        await _send_notification(realtime_ws, notification)
+
+
+async def _send_notification(realtime_ws: Any, notification: dict) -> None:
+    """Send a notification to the voice model as a context injection."""
+    try:
+        await realtime_ws.send(json.dumps({
+            "type": "conversation.item.create",
+            "item": {
+                "type": "message",
+                "role": "user",
+                "content": [{
+                    "type": "input_text",
+                    "text": f"[System: {notification['summary']} You can briefly reference the data now visible to the user.]"
+                }]
+            }
+        }))
+        await realtime_ws.send(json.dumps({
+            "type": "response.create"
+        }))
+        logger.info(f"Sent visualization notification to voice model")
+    except Exception as e:
+        logger.error(f"Failed to send notification to voice model: {e}")
 
 
 async def handle_voice_session(websocket: WebSocket) -> None:
@@ -62,10 +299,12 @@ async def handle_voice_session(websocket: WebSocket) -> None:
     - {"type": "audio", "data": "<base64-pcm16>"}
     - {"type": "transcript", "role": "user"|"assistant", "text": "..."}
     - {"type": "tool_result", "tool": "...", "result": {...}}
+    - {"type": "visualization_generating", "vis_type": "chart"|"metrics"}
     - {"type": "error", "error": "..."}
     """
     realtime_ws = None
     muted = False
+    session_state = VoiceSessionState()
 
     try:
         # Get Azure credential and token
@@ -96,7 +335,7 @@ async def handle_voice_session(websocket: WebSocket) -> None:
         # Send session configuration
         current_mode = get_current_mode()
         persona = ensure_persona(current_mode.id)
-        system_prompt = build_system_prompt(current_mode, persona)
+        system_prompt = build_voice_system_prompt(build_system_prompt(current_mode, persona))
 
         session_config = {
             "type": "session.update",
@@ -173,6 +412,18 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                     elif event_type == "session.updated":
                         logger.info("gpt-realtime session updated")
 
+                    elif event_type == "response.created":
+                        session_state.model_is_responding = True
+
+                    elif event_type == "response.done":
+                        session_state.model_is_responding = False
+                        # Process any deferred notifications
+                        if session_state.deferred_notifications:
+                            notifications = session_state.deferred_notifications[:]
+                            session_state.deferred_notifications.clear()
+                            for notification in notifications:
+                                await _send_notification(realtime_ws, notification)
+
                     elif event_type == "input_audio_buffer.speech_started":
                         # User started speaking - IMMEDIATELY cancel any in-progress response
                         await realtime_ws.send(json.dumps({
@@ -193,6 +444,9 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                         # User's speech transcribed
                         transcript = event.get("transcript", "")
                         if transcript:
+                            # Track transcript for Chat API context
+                            session_state.add_transcript("user", transcript)
+
                             await websocket.send_text(json.dumps({
                                 "type": "transcript",
                                 "role": "user",
@@ -210,6 +464,9 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                 }))
                                 logger.info("Cancelled in-flight response (possible mode switch)")
 
+                                # Cancel pending visualizations on mode switch
+                                session_state.cancel_all_pending()
+
                                 # Send loading indicator to frontend
                                 await websocket.send_text(json.dumps({
                                     "type": "mode_generating",
@@ -221,6 +478,11 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                             if new_mode:
                                 logger.info(f"Voice mode switch detected: {new_mode.name}")
                                 set_current_mode(new_mode.id)
+
+                                # Cancel any pending visualizations
+                                session_state.cancel_all_pending()
+                                # Clear transcript history for new mode
+                                session_state.transcript_history.clear()
 
                                 # Generate persona for new mode
                                 persona = generate_persona(new_mode.id, get_session_seed())
@@ -244,10 +506,11 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                                 }))
 
                                 # Update gpt-realtime session with new instructions
-                                new_system_prompt = build_system_prompt(new_mode, persona)
+                                new_system_prompt = build_voice_system_prompt(build_system_prompt(new_mode, persona))
                                 await realtime_ws.send(json.dumps({
                                     "type": "session.update",
                                     "session": {
+                                        "tools": build_realtime_tools(),
                                         "instructions": new_system_prompt
                                     }
                                 }))
@@ -293,6 +556,9 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                         # Assistant transcript chunk
                         transcript = event.get("delta", "")
                         if transcript:
+                            # Track assistant transcript for Chat API context (accumulate deltas)
+                            session_state.append_assistant_delta(transcript)
+
                             await websocket.send_text(json.dumps({
                                 "type": "transcript",
                                 "role": "assistant",
@@ -300,40 +566,87 @@ async def handle_voice_session(websocket: WebSocket) -> None:
                             }))
 
                     elif event_type == "response.function_call_arguments.done":
-                        # Tool call completed - execute and return result
+                        # Lightweight tool call completed (request_visualization)
                         call_id = event.get("call_id", "")
                         name = event.get("name", "")
                         arguments_str = event.get("arguments", "{}")
 
-                        logger.info(f"Tool call: {name} with args: {arguments_str[:100]}...")
+                        logger.info(f"Tool call: {name} with args: {arguments_str[:200]}")
 
                         try:
                             arguments = json.loads(arguments_str)
-                            result = execute_tool(name, arguments)
 
-                            # Send tool result to browser for visualization
-                            await websocket.send_text(json.dumps({
-                                "type": "tool_result",
-                                "tool": name,
-                                "result": result
-                            }))
+                            if name == "request_visualization":
+                                vis_type = arguments.get("vis_type", "chart")
+                                description = arguments.get("description", "")
 
-                            # Send function call output back to gpt-realtime
-                            await realtime_ws.send(json.dumps({
-                                "type": "conversation.item.create",
-                                "item": {
-                                    "type": "function_call_output",
-                                    "call_id": call_id,
-                                    "output": json.dumps(result)
-                                }
-                            }))
+                                # 1. Immediately acknowledge the tool call
+                                ack_output = json.dumps({
+                                    "status": "generating",
+                                    "message": f"Generating {vis_type} for: {description}"
+                                })
+                                await realtime_ws.send(json.dumps({
+                                    "type": "conversation.item.create",
+                                    "item": {
+                                        "type": "function_call_output",
+                                        "call_id": call_id,
+                                        "output": ack_output
+                                    }
+                                }))
 
-                            # Trigger response continuation after tool execution
-                            await realtime_ws.send(json.dumps({
-                                "type": "response.create"
-                            }))
+                                # 2. Resume voice immediately
+                                await realtime_ws.send(json.dumps({
+                                    "type": "response.create"
+                                }))
 
-                            logger.info(f"Tool {name} executed and result sent")
+                                # 3. Send loading indicator to frontend
+                                await websocket.send_text(json.dumps({
+                                    "type": "visualization_generating",
+                                    "vis_type": vis_type,
+                                    "description": description
+                                }))
+
+                                # 4. Cancel previous pending visualization of same type
+                                if vis_type in session_state.pending_visualizations:
+                                    old_task = session_state.pending_visualizations[vis_type]
+                                    if not old_task.done():
+                                        old_task.cancel()
+                                        logger.info(f"Cancelled previous pending {vis_type} visualization")
+
+                                # 5. Launch background task
+                                task = asyncio.create_task(
+                                    _generate_visualization_background(
+                                        session_state, vis_type, description,
+                                        websocket, realtime_ws
+                                    )
+                                )
+                                session_state.pending_visualizations[vis_type] = task
+
+                                logger.info(f"Launched background {vis_type} generation for: {description}")
+                            else:
+                                # Fallback: handle any other tool calls directly
+                                result = execute_tool(name, arguments)
+
+                                await websocket.send_text(json.dumps({
+                                    "type": "tool_result",
+                                    "tool": name,
+                                    "result": result
+                                }))
+
+                                await realtime_ws.send(json.dumps({
+                                    "type": "conversation.item.create",
+                                    "item": {
+                                        "type": "function_call_output",
+                                        "call_id": call_id,
+                                        "output": json.dumps(result)
+                                    }
+                                }))
+
+                                await realtime_ws.send(json.dumps({
+                                    "type": "response.create"
+                                }))
+
+                                logger.info(f"Tool {name} executed and result sent")
 
                         except json.JSONDecodeError as e:
                             logger.error(f"Failed to parse tool arguments: {e}")
@@ -390,6 +703,9 @@ async def handle_voice_session(websocket: WebSocket) -> None:
             "error": str(e)
         }))
     finally:
+        # Cancel all pending background tasks
+        session_state.cancel_all_pending()
+
         # Clean up gpt-realtime connection
         if realtime_ws:
             await realtime_ws.close()
