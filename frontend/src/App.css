@@ -42,6 +42,53 @@ html, body, #root {
   background-color: var(--theme-chat-bg);
   color: #e2e8f0;
   transition: background-color 0.3s ease;
+  position: relative;
+  background-repeat: no-repeat;
+}
+
+/* Chat background image overlay — blurs image into soft color wash + darkens for contrast */
+.chat-panel.has-chat-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* When a chat image is present, strengthen element backgrounds for contrast */
+.chat-panel.has-chat-image .message-content {
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.chat-panel.has-chat-image .chat-input {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.chat-panel.has-chat-image .chat-input:focus {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-panel.has-chat-image .chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.chat-panel.has-chat-image .header-title {
+  color: #fff;
+  font-weight: 600;
+}
+
+.chat-panel.has-chat-image > * {
+  position: relative;
+  z-index: 2;
 }
 
 .chat-header {
@@ -255,6 +302,27 @@ html, body, #root {
   flex-direction: column;
   background-color: var(--theme-background);
   min-width: 0;
+  background-repeat: no-repeat;
+}
+
+/* Background image overlay scrim — ensures text readability */
+.dashboard-panel.has-bg-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--theme-background) 90%, transparent),
+    color-mix(in srgb, var(--theme-background) 95%, transparent)
+  );
+  pointer-events: none;
+}
+
+/* All dashboard children sit above the scrim */
+.dashboard-panel.has-bg-image > * {
+  position: relative;
+  z-index: 2;
 }
 
 .persona-header {
@@ -379,6 +447,26 @@ html, body, #root {
   max-width: 400px;
 }
 
+/* Hero background image - fills the visualization container */
+.visualization-container.has-hero-bg {
+  position: relative;
+}
+
+.visualization-container.has-hero-bg .visualization-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Semi-transparent backdrop behind text when hero image is present */
+.visualization-container.has-hero-bg .visualization-placeholder {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 32px 40px;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
 .visualization-placeholder .company-logo {
   width: 100px;
   height: 100px;
@@ -397,8 +485,8 @@ html, body, #root {
 }
 
 .visualization-placeholder .company-name {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   color: var(--theme-text);
   margin-bottom: 8px;
   background: linear-gradient(135deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 60%, black));
@@ -408,9 +496,10 @@ html, body, #root {
 }
 
 .visualization-placeholder .company-tagline {
-  font-size: 16px;
+  font-size: 17px;
   color: var(--theme-text-muted);
   font-style: italic;
+  font-weight: 500;
   margin-bottom: 24px;
 }
 

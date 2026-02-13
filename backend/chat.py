@@ -456,7 +456,10 @@ async def handle_chat_message(text: str, websocket: WebSocket) -> None:
                     "tagline": new_mode.tagline,
                     "theme": new_mode.theme.model_dump(),
                     "tabs": [tab.model_dump() for tab in new_mode.tabs],
-                    "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics]
+                    "defaultMetrics": [m.model_dump() for m in new_mode.default_metrics],
+                    "background_image": new_mode.background_image,
+                    "hero_image": new_mode.hero_image,
+                    "chat_image": new_mode.chat_image,
                 },
                 "persona": _current_persona
             }

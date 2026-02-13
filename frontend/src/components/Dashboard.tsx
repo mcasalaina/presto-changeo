@@ -7,9 +7,10 @@ export interface DashboardProps {
   visualization?: ReactNode
   companyName?: string
   tagline?: string
+  heroImage?: string
 }
 
-export function Dashboard({ metrics, visualization, companyName, tagline }: DashboardProps) {
+export function Dashboard({ metrics, visualization, companyName, tagline, heroImage }: DashboardProps) {
   // When visualization is present, hide metrics and show chart full-width
   const hasVisualization = visualization != null
   // Check if there are actual metrics to display
@@ -29,6 +30,7 @@ export function Dashboard({ metrics, visualization, companyName, tagline }: Dash
           content={visualization}
           companyName={companyName}
           tagline={tagline}
+          heroImage={heroImage}
         />
       </div>
     </div>

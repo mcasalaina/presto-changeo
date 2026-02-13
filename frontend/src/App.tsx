@@ -170,6 +170,9 @@ function AppContent() {
           }
           tabs: Array<{ id: string; label: string; icon: string }>
           defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
+          background_image?: string | null
+          hero_image?: string | null
+          chat_image?: string | null
         }
         persona?: Persona
       }
@@ -190,6 +193,9 @@ function AppContent() {
         tabs: modePayload.mode.tabs,
         systemPrompt: '',
         defaultMetrics: modePayload.mode.defaultMetrics,
+        backgroundImage: modePayload.mode.background_image ?? undefined,
+        heroImage: modePayload.mode.hero_image ?? undefined,
+        chatImage: modePayload.mode.chat_image ?? undefined,
       }
       // Keep blocking - old transcript chunks may still arrive after mode_switch
       // We'll unblock after a delay to let them drain
@@ -386,6 +392,9 @@ function AppContent() {
           }
           tabs: Array<{ id: string; label: string; icon: string }>
           defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
+          background_image?: string | null
+          hero_image?: string | null
+          chat_image?: string | null
         }
         persona?: Persona
       }
@@ -406,6 +415,9 @@ function AppContent() {
         tabs: payload.mode.tabs,
         systemPrompt: '',
         defaultMetrics: payload.mode.defaultMetrics,
+        backgroundImage: payload.mode.background_image ?? undefined,
+        heroImage: payload.mode.hero_image ?? undefined,
+        chatImage: payload.mode.chat_image ?? undefined,
       }
       setMode(newMode)
       // Clear visualization on mode switch
@@ -478,7 +490,14 @@ function AppContent() {
   return (
     <div className="app">
       {/* Left Panel - Chat */}
-      <aside className="chat-panel">
+      <aside
+        className={`chat-panel${mode.chatImage ? ' has-chat-image' : ''}`}
+        style={mode.chatImage ? {
+          backgroundImage: `url(http://localhost:8000${mode.chatImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : undefined}
+      >
         <header className="chat-header">
           <span className="header-title">{mode.companyName}</span>
           <div className="header-actions">
@@ -549,7 +568,14 @@ function AppContent() {
       </aside>
 
       {/* Right Panel - Dashboard */}
-      <main className="dashboard-panel">
+      <main
+        className={`dashboard-panel${mode.backgroundImage ? ' has-bg-image' : ''}`}
+        style={mode.backgroundImage ? {
+          backgroundImage: `url(http://localhost:8000${mode.backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : undefined}
+      >
         {/* Mode generating overlay */}
         {modeGenerating && (
           <div className="mode-generating-overlay">
@@ -564,6 +590,7 @@ function AppContent() {
           visualization={visualization}
           companyName={mode.companyName}
           tagline={mode.tagline}
+          heroImage={mode.heroImage ? `http://localhost:8000${mode.heroImage}` : undefined}
         />
 
         <nav className="bottom-tabs">

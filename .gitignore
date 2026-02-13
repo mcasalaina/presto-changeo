@@ -22,6 +22,9 @@ build/
 *.swo
 *~
 
+# Generated images
+backend/generated_images/
+
 # OS
 .DS_Store
 Thumbs.db

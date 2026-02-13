@@ -105,6 +105,9 @@ export function ModeProvider({ children }: { children: ReactNode }) {
             tabs: data.mode.tabs,
             systemPrompt: '',
             defaultMetrics: data.mode.defaultMetrics,
+            backgroundImage: data.mode.background_image ?? undefined,
+            heroImage: data.mode.hero_image ?? undefined,
+            chatImage: data.mode.chat_image ?? undefined,
           }
 
           setModeState(restoredMode)

@@ -44,6 +44,9 @@ class Mode(BaseModel):
     tabs: list[ModeTab]
     system_prompt: str
     default_metrics: list[ModeMetric]
+    background_image: str | None = None
+    hero_image: str | None = None
+    chat_image: str | None = None
 
 
 # Pre-built mode configurations

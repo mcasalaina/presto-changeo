@@ -14,6 +14,7 @@ from azure.ai.inference.models import SystemMessage, UserMessage
 
 from auth import get_inference_client
 from color_utils import derive_theme_palette
+from image_generator import generate_mode_images
 from modes import Mode, ModeTheme, ModeTab, ModeMetric
 
 # Model deployment - use same as chat
@@ -203,6 +204,24 @@ async def generate_mode(industry: str, full_request: str = "", company_name: str
                 for m in metrics
             ],
         )
+
+        # Generate images for the new mode (non-fatal on failure)
+        try:
+            images = await generate_mode_images(
+                mode_id=mode.id,
+                industry_name=mode.name,
+                company_name=mode.company_name,
+                primary_color=primary_color,
+            )
+            if images.get("background_image") or images.get("hero_image") or images.get("chat_image"):
+                mode = mode.model_copy(update={
+                    "background_image": images.get("background_image"),
+                    "hero_image": images.get("hero_image"),
+                    "chat_image": images.get("chat_image"),
+                })
+                logger.info(f"Images generated: bg={images.get('background_image')}, hero={images.get('hero_image')}, chat={images.get('chat_image')}")
+        except Exception as e:
+            logger.warning(f"Image generation failed (non-fatal): {e}")
 
         logger.info(f"Mode generation complete: {mode.name} (id={mode.id})")
         return mode

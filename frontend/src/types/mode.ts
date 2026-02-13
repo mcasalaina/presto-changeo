@@ -22,6 +22,9 @@ export interface Mode {
   tabs: ModeTab[]
   systemPrompt: string // AI personality prompt for this mode
   defaultMetrics: Array<{ label: string; value: string | number; unit?: string }>
+  backgroundImage?: string  // URL for dashboard background image
+  heroImage?: string        // URL for hero/logo image in visualization area
+  chatImage?: string        // URL for chat sidebar background image
 }
 
 // =============================================================================

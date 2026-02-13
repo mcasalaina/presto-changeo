@@ -6,9 +6,11 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from azure.ai.inference.models import SystemMessage, UserMessage
 
@@ -78,6 +80,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mount generated images as static files
+_images_dir = Path(__file__).parent / "generated_images"
+_images_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(_images_dir)), name="images")
+
 # Configure CORS for frontend development server
 app.add_middleware(
     CORSMiddleware,
@@ -111,7 +118,10 @@ async def get_state():
             "tagline": current_mode.tagline,
             "theme": current_mode.theme.model_dump(),
             "tabs": [tab.model_dump() for tab in current_mode.tabs],
-            "defaultMetrics": [m.model_dump() for m in current_mode.default_metrics]
+            "defaultMetrics": [m.model_dump() for m in current_mode.default_metrics],
+            "background_image": current_mode.background_image,
+            "hero_image": current_mode.hero_image,
+            "chat_image": current_mode.chat_image,
         },
         "persona": persona
     }
