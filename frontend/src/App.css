@@ -320,7 +320,7 @@ html, body, #root {
 }
 
 /* All dashboard children sit above the scrim */
-.dashboard-panel.has-bg-image > * {
+.dashboard-panel.has-bg-image > *:not(.mode-generating-overlay) {
   position: relative;
   z-index: 2;
 }
