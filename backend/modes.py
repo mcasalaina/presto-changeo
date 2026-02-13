@@ -252,14 +252,18 @@ def get_generated_mode(mode_id: str) -> Mode | None:
 def get_mode(mode_id: str) -> Mode | None:
     """
     Get a mode configuration by ID.
-    Checks pre-built MODES first, then dynamically generated modes.
+    Checks dynamically generated modes first (user customizations take priority),
+    then falls back to pre-built MODES.
     """
     mode_key = mode_id.lower()
-    # Check pre-built modes first
+    # Check dynamically generated modes first (user customizations shadow pre-built)
+    generated = _generated_modes.get(mode_key)
+    if generated:
+        return generated
+    # Then check pre-built modes
     if mode_key in MODES:
         return MODES[mode_key]
-    # Then check dynamically generated modes
-    return _generated_modes.get(mode_key)
+    return None
 
 
 def get_all_modes() -> list[Mode]:

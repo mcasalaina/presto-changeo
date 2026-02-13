@@ -224,17 +224,16 @@ RULES: Never say "sample/demo/hypothetical". One sentence max with charts. Use p
     return base
 
 
-async def _detect_mode_switch_intent(text: str) -> str | None:
+async def _detect_mode_switch_intent(text: str) -> dict | None:
     """
-    Use LLM to detect if the user wants to switch modes and extract the industry.
-    Returns the industry name if a mode switch is detected, None otherwise.
+    Use LLM to detect if the user wants to switch modes.
+    Returns {"industry": str, "company_name": str | None} if detected, None otherwise.
 
-    This replaces brittle regex matching with semantic understanding.
-    The LLM understands variations like:
-    - "Presto-Change-O, you're a bank"
-    - "presto chango you're a health insurance company"
-    - "hey presto changeo be a florist"
-    - "transform into a pet store"
+    Extracts both the industry type and any specific company name the user mentions.
+    Examples:
+    - "Presto, you're a bank" → {"industry": "banking", "company_name": None}
+    - "Presto, you're Wells Fargo" → {"industry": "banking", "company_name": "Wells Fargo"}
+    - "Presto, you're a florist called Rose Garden" → {"industry": "florist", "company_name": "Rose Garden"}
     """
     client = get_inference_client()
 
@@ -242,7 +241,25 @@ async def _detect_mode_switch_intent(text: str) -> str | None:
         response = client.complete(
             model=MODEL_DEPLOYMENT,
             messages=[
-                SystemMessage(content="""Detect mode switch requests. If user says "presto [industry]" or similar, respond with ONLY the industry name. Otherwise respond "NONE"."""),
+                SystemMessage(content="""Detect mode switch requests. If user says "presto [industry]" or similar, extract the industry AND any specific company name.
+
+Respond with JSON: {"industry": "...", "company_name": "..."} or just "NONE" if no mode switch.
+
+Rules:
+- "industry" should be the TYPE of business (e.g., "banking", "florist", "pet store", "restaurant")
+- "company_name" should be the specific company name if the user mentions one, or null if they don't
+- If the user names a well-known company (like Wells Fargo, Allstate, Target), infer the industry from it
+- If the user says something like "you're X" where X is clearly a company name (not just an industry), extract it as company_name
+
+Examples:
+- "Presto, you're a bank" → {"industry": "banking", "company_name": null}
+- "Presto, you're Wells Fargo" → {"industry": "banking", "company_name": "Wells Fargo"}
+- "hey presto changeo be a florist" → {"industry": "florist", "company_name": null}
+- "Presto, you're Joe's Tacos" → {"industry": "restaurant", "company_name": "Joe's Tacos"}
+- "Presto change-o, you're a pet store called Paws & Claws" → {"industry": "pet store", "company_name": "Paws & Claws"}
+- "Transform into Allstate" → {"industry": "insurance", "company_name": "Allstate"}
+- "Presto, you're McCormick" → {"industry": "spice manufacturing", "company_name": "McCormick"}
+- "What's my balance?" → NONE"""),
                 UserMessage(content=text)
             ],
         )
@@ -253,7 +270,35 @@ async def _detect_mode_switch_intent(text: str) -> str | None:
         if result.upper() == "NONE" or not result:
             return None
 
-        return result.lower()
+        # Parse JSON response
+        json_str = result
+        if json_str.startswith("```"):
+            lines = json_str.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            json_str = "\n".join(lines)
+
+        try:
+            parsed = json.loads(json_str)
+            industry = parsed.get("industry", "").lower().strip()
+            company_name = parsed.get("company_name")
+            if company_name and isinstance(company_name, str):
+                company_name = company_name.strip()
+            else:
+                company_name = None
+
+            if not industry:
+                return None
+
+            logger.info(f"Parsed intent: industry='{industry}', company_name='{company_name}'")
+            return {"industry": industry, "company_name": company_name}
+        except json.JSONDecodeError:
+            # Fallback: treat the whole response as industry name (backward compat)
+            industry = result.lower().strip()
+            logger.info(f"Fallback intent parse: industry='{industry}', no company_name")
+            return {"industry": industry, "company_name": None}
 
     except Exception as e:
         logger.error(f"Mode switch detection failed: {e}")
@@ -270,6 +315,16 @@ def _quick_presto_check(text: str) -> bool:
     return any(pattern in text_lower for pattern in presto_patterns)
 
 
+def _override_company_name(mode: Mode, new_company_name: str) -> Mode:
+    """Create a copy of a mode with an overridden company name and updated system prompt."""
+    new_system_prompt = mode.system_prompt.replace(mode.company_name, new_company_name)
+
+    return mode.model_copy(update={
+        "company_name": new_company_name,
+        "system_prompt": new_system_prompt,
+    })
+
+
 async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> Mode | None:
     """
     Detect if the user is requesting a mode switch using LLM intent detection.
@@ -277,6 +332,9 @@ async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> M
 
     Uses semantic understanding instead of keyword matching to handle
     variations in how users phrase mode switch requests.
+
+    If the user specifies a company name, that name will be used regardless of
+    whether the mode is pre-built, cached, or newly generated.
 
     Args:
         text: The user's input text
@@ -289,8 +347,8 @@ async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> M
             "payload": {"industry": "new mode"}
         }))
 
-    industry = await _detect_mode_switch_intent(text)
-    if not industry:
+    intent = await _detect_mode_switch_intent(text)
+    if not intent:
         # Clear the loading indicator if we showed it but this wasn't actually a mode switch
         if _quick_presto_check(text) and websocket:
             await websocket.send_text(json.dumps({
@@ -299,29 +357,41 @@ async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> M
             }))
         return None
 
-    logger.info(f"Mode switch intent detected for industry: {industry}")
+    industry = intent["industry"]
+    user_company_name = intent.get("company_name")
+
+    logger.info(f"Mode switch intent: industry='{industry}', company_name='{user_company_name}'")
 
     # Map common industry names to pre-built modes
     industry_lower = industry.lower()
+    base_mode = None
 
     # Banking mode
     if any(word in industry_lower for word in ["bank", "banking", "financial", "finance"]):
-        return get_mode("banking")
+        base_mode = get_mode("banking")
 
     # Insurance mode
-    if any(word in industry_lower for word in ["insurance", "insurer", "policy", "claims"]):
-        return get_mode("insurance")
+    elif any(word in industry_lower for word in ["insurance", "insurer", "policy", "claims"]):
+        base_mode = get_mode("insurance")
 
     # Healthcare mode
-    if any(word in industry_lower for word in ["health", "healthcare", "medical", "hospital", "doctor", "clinic"]):
-        return get_mode("healthcare")
+    elif any(word in industry_lower for word in ["health", "healthcare", "medical", "hospital", "doctor", "clinic"]):
+        base_mode = get_mode("healthcare")
 
-    # Check if we already have this mode (previously generated)
-    mode_id = industry.replace(" ", "_").replace("-", "_")
-    existing_mode = get_mode(mode_id)
-    if existing_mode:
-        logger.info(f"Found existing mode for '{industry}': {existing_mode.name}")
-        return existing_mode
+    else:
+        # Check if we already have this mode (previously generated)
+        mode_id = industry.replace(" ", "_").replace("-", "_")
+        base_mode = get_mode(mode_id)
+
+    if base_mode:
+        if user_company_name:
+            # User specified a company name - override it on the cached/pre-built mode
+            logger.info(f"Overriding company_name '{base_mode.company_name}' -> '{user_company_name}' on mode '{base_mode.id}'")
+            mode = _override_company_name(base_mode, user_company_name)
+            store_generated_mode(mode)
+            return mode
+        logger.info(f"Using existing mode '{base_mode.id}' (company: {base_mode.company_name})")
+        return base_mode
 
     # Notify that we're generating a new mode (this takes time)
     if websocket:
@@ -331,13 +401,12 @@ async def detect_mode_switch(text: str, websocket: WebSocket | None = None) -> M
         }))
 
     # Try to generate a new mode for this industry
-    # Pass the full user request so the LLM can extract any company name mentioned
     try:
         logger.info(f"Generating mode for unknown industry: {industry}")
-        new_mode = await generate_mode(industry, text)
+        new_mode = await generate_mode(industry, text, company_name=user_company_name)
         if new_mode:
             store_generated_mode(new_mode)
-            logger.info(f"Generated and stored mode: {new_mode.name} (id={new_mode.id})")
+            logger.info(f"Generated and stored mode: {new_mode.name} (id={new_mode.id}, company={new_mode.company_name})")
             return new_mode
     except Exception as e:
         logger.error(f"Mode generation failed for '{industry}': {e}")

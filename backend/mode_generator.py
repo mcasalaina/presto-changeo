@@ -77,7 +77,7 @@ def _build_full_system_prompt(config: dict) -> str:
 {TOOLS_CONTEXT}"""
 
 
-async def generate_mode(industry: str, full_request: str = "") -> Optional[Mode]:
+async def generate_mode(industry: str, full_request: str = "", company_name: str | None = None) -> Optional[Mode]:
     """
     Generate a complete Mode configuration for an arbitrary industry.
 
@@ -88,6 +88,7 @@ async def generate_mode(industry: str, full_request: str = "") -> Optional[Mode]
     Args:
         industry: The industry to generate a mode for, e.g., "pet store", "law firm"
         full_request: The full user request, which may contain a specific company name
+        company_name: If provided, forces this company name (overrides LLM generation)
 
     Returns:
         Mode object ready to be used by the application, or None if generation fails.
@@ -173,6 +174,11 @@ async def generate_mode(industry: str, full_request: str = "") -> Optional[Mode]
                 config['industry_name'] = industry.title()
             if config['industry_name'] != original:
                 logger.warning(f"Sanitized industry_name: '{original}' -> '{config['industry_name']}'")
+
+        # If an explicit company_name was provided, override whatever the LLM returned
+        if company_name:
+            logger.info(f"Using explicit company_name: '{company_name}' (LLM returned: '{config.get('company_name', 'N/A')}')")
+            config['company_name'] = company_name
 
         logger.info(f"Generated config for: {config.get('industry_name', 'unknown')}")
 
