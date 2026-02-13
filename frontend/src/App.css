@@ -1004,3 +1004,100 @@ html, body, #root {
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
+/* ==================== SETTINGS PANEL ==================== */
+
+.settings-panel {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+.settings-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin-bottom: 24px;
+}
+
+.settings-section {
+  background: var(--theme-surface);
+  border: 1px solid color-mix(in srgb, var(--theme-text-muted) 20%, transparent);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin-bottom: 4px;
+}
+
+.settings-section-desc {
+  font-size: 13px;
+  color: var(--theme-text-muted);
+  margin-bottom: 16px;
+}
+
+.voice-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.voice-option {
+  padding: 8px 16px;
+  border: 1px solid color-mix(in srgb, var(--theme-text-muted) 30%, transparent);
+  border-radius: 8px;
+  background: var(--theme-background);
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: capitalize;
+}
+
+.voice-option:hover {
+  border-color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 5%, transparent);
+}
+
+.voice-option.active {
+  border-color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 12%, transparent);
+  color: var(--theme-primary);
+  font-weight: 600;
+}
+
+.voice-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== TAB CONTENT CONTAINER ==================== */
+
+.tab-content-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 0;
+}
+
+.tab-content-visualization {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 2;
+}

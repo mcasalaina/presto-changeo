@@ -42,10 +42,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Performance & Infrastructure
 
-- [ ] **PERF-01**: User sees loading spinner during mode switching/generation
-- [ ] **PERF-02**: System caches generated styles and images for reuse
-- [ ] **PERF-03**: Generated modes persist server-side for future use
-- [ ] **PERF-04**: System recovers gracefully from API failures with retry option
+- [x] **PERF-01**: User sees loading spinner during mode switching/generation
+- [x] **PERF-02**: System caches generated styles and images for reuse
+- [x] **PERF-03**: Generated modes persist server-side for future use
+- [x] **PERF-04**: System recovers gracefully from API failures with retry option
 
 ## v2 Requirements
 
@@ -100,10 +100,10 @@ Which phases cover which requirements. Updated by create-roadmap.
 | VOIC-02 | Phase 6 | Complete |
 | VOIC-03 | Phase 6 | Complete |
 | VOIC-04 | Phase 6 | Complete |
-| PERF-01 | Phase 8 | Pending |
-| PERF-02 | Phase 8 | Pending |
-| PERF-03 | Phase 8 | Pending |
-| PERF-04 | Phase 8 | Pending |
+| PERF-01 | Phase 8 | Complete |
+| PERF-02 | Phase 8 | Complete |
+| PERF-03 | Phase 8 | Complete |
+| PERF-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 22 total

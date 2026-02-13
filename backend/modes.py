@@ -192,6 +192,7 @@ def _save_state() -> None:
     try:
         state = {
             "current_mode": _current_mode,
+            "voice_preference": _voice_preference,
             "generated_modes": {
                 mode_id: mode.model_dump()
                 for mode_id, mode in _generated_modes.items()
@@ -219,11 +220,14 @@ def _sanitize_presto(text: str) -> str:
 
 def _load_state() -> None:
     """Load persisted mode state from disk."""
-    global _current_mode, _generated_modes
+    global _current_mode, _generated_modes, _voice_preference
     try:
         if STATE_FILE.exists():
             state = json.loads(STATE_FILE.read_text())
             _current_mode = state.get("current_mode", "banking")
+            loaded_voice = state.get("voice_preference", "verse")
+            if loaded_voice in AVAILABLE_VOICES:
+                _voice_preference = loaded_voice
             # Restore generated modes, sanitizing company names
             for mode_id, mode_data in state.get("generated_modes", {}).items():
                 # CRITICAL: Strip "presto" from any company names on load
@@ -277,6 +281,10 @@ def get_all_modes() -> list[Mode]:
 # Current active mode (module-level state, like conversation_history)
 _current_mode: str = "banking"
 
+# Voice preference
+AVAILABLE_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
+_voice_preference: str = "verse"
+
 
 def get_current_mode() -> Mode:
     """Get the current active mode."""
@@ -297,6 +305,21 @@ def set_current_mode(mode_id: str) -> Mode | None:
         _save_state()
         return mode
     return None
+
+
+def get_voice_preference() -> str:
+    """Get the current voice preference."""
+    return _voice_preference
+
+
+def set_voice_preference(voice: str) -> bool:
+    """Set the voice preference. Returns True if valid, False otherwise."""
+    global _voice_preference
+    if voice in AVAILABLE_VOICES:
+        _voice_preference = voice
+        _save_state()
+        return True
+    return False
 
 
 # Load persisted state on module import

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useVoice } from './hooks/useVoice'
 import { TypingIndicator } from './components/TypingIndicator'
 import { Dashboard } from './components/Dashboard'
 import { ChartRenderer } from './components/ChartRenderer'
 import { VoiceToggle } from './components/VoiceToggle'
+import { SettingsPanel } from './components/SettingsPanel'
 import { ModeProvider, useMode } from './context/ModeContext'
 import type { Mode, Persona } from './types/mode'
 import type { Metric } from './components/MetricsPanel'
@@ -30,6 +31,8 @@ function AppContent() {
   const [visualization, setVisualization] = useState<React.ReactNode>(null)
   const [dashboardMetrics, setDashboardMetrics] = useState<Metric[] | undefined>(undefined)
   const [persona, setPersona] = useState<Persona>(null)
+  const [tabContentCache, setTabContentCache] = useState<Record<string, ReactNode>>({})
+  const [tabLoading, setTabLoading] = useState(false)
 
   // Sync persona from context when restored from backend
   useEffect(() => {
@@ -207,6 +210,8 @@ function AppContent() {
       setMode(newMode)
       setVisualization(null)
       setModeGenerating(null)  // Clear loading indicator
+      setTabContentCache({})
+      setActiveTab('dashboard')
 
       // Set up dashboard like New Conversation: use mode's default metrics
       setDashboardMetrics(newMode.defaultMetrics)
@@ -345,11 +350,13 @@ function AppContent() {
             data={chartResult.data}
           />
         )
+        setActiveTab('dashboard')
       } else if (tool === 'show_metrics') {
         const metricsResult = result as {
           metrics: Array<{ label: string; value: string | number; unit?: string }>
         }
         setDashboardMetrics(metricsResult.metrics)
+        setActiveTab('dashboard')
       }
     } else if (message.type === 'mode_generating') {
       // Mode switch starting - block all incoming messages immediately
@@ -422,6 +429,8 @@ function AppContent() {
       setMode(newMode)
       // Clear visualization on mode switch
       setVisualization(null)
+      setTabContentCache({})
+      setActiveTab('dashboard')
 
       // Set up dashboard like New Conversation: use mode's default metrics
       setDashboardMetrics(newMode.defaultMetrics)
@@ -485,7 +494,87 @@ function AppContent() {
     setDashboardMetrics(mode.defaultMetrics)
     // Tell backend to clear history
     send({ type: 'clear_chat', payload: {} })
+    // Clear tab content cache
+    setTabContentCache({})
+    setActiveTab('dashboard')
   }
+
+  // Ref to track which mode's prefetch is active (for cancellation on mode switch)
+  const prefetchModeIdRef = useRef<string | null>(null)
+
+  const fetchTabContent = useCallback(async (tabId: string, tabLabel: string, modeId: string): Promise<ReactNode | null> => {
+    try {
+      const res = await fetch('http://localhost:8000/api/tab-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tab_id: tabId, tab_label: tabLabel, mode_id: modeId }),
+      })
+      const data = await res.json()
+
+      const nodes: ReactNode[] = []
+      for (const tr of data.tool_results ?? []) {
+        if (tr.tool === 'show_chart') {
+          nodes.push(
+            <ChartRenderer
+              key={`${tabId}-chart-${nodes.length}`}
+              chartType={tr.result.chart_type}
+              title={tr.result.title}
+              data={tr.result.data}
+            />
+          )
+        }
+      }
+
+      return nodes.length > 0 ? nodes : null
+    } catch (err) {
+      console.error(`Failed to generate tab content for ${tabId}:`, err)
+      return null
+    }
+  }, [])
+
+  const prefetchAllTabs = useCallback(async (tabs: Array<{ id: string; label: string }>, modeId: string) => {
+    prefetchModeIdRef.current = modeId
+    for (const tab of tabs) {
+      if (tab.id === 'dashboard' || tab.id === 'settings') continue
+      // Abort if mode switched while prefetching
+      if (prefetchModeIdRef.current !== modeId) return
+      const content = await fetchTabContent(tab.id, tab.label, modeId)
+      // Check again after await — mode may have switched during fetch
+      if (prefetchModeIdRef.current !== modeId) return
+      if (content) {
+        setTabContentCache(prev => ({ ...prev, [tab.id]: content }))
+      }
+    }
+  }, [fetchTabContent])
+
+  // Prefetch all tab content in the background when mode is ready
+  useEffect(() => {
+    if (!isLoading && mode.tabs.length > 0) {
+      prefetchAllTabs(mode.tabs, mode.id)
+    }
+  }, [isLoading, mode.id, mode.tabs, prefetchAllTabs])
+
+  const generateTabContent = useCallback(async (tabId: string, tabLabel: string) => {
+    // Cache hit — return immediately
+    if (tabContentCache[tabId]) return
+
+    setTabLoading(true)
+    try {
+      const content = await fetchTabContent(tabId, tabLabel, mode.id)
+      if (content) {
+        setTabContentCache(prev => ({ ...prev, [tabId]: content }))
+      }
+    } finally {
+      setTabLoading(false)
+    }
+  }, [tabContentCache, mode.id, fetchTabContent])
+
+  const handleTabClick = useCallback((tabId: string, tabLabel: string) => {
+    setActiveTab(tabId)
+    if (tabId !== 'dashboard' && tabId !== 'settings') {
+      generateTabContent(tabId, tabLabel)
+    }
+  }, [generateTabContent])
 
   return (
     <div className="app">
@@ -585,20 +674,43 @@ function AppContent() {
             </div>
           </div>
         )}
-        <Dashboard
-          metrics={dashboardMetrics}
-          visualization={visualization}
-          companyName={mode.companyName}
-          tagline={mode.tagline}
-          heroImage={mode.heroImage ? `http://localhost:8000${mode.heroImage}` : undefined}
-        />
+        {activeTab === 'dashboard' && (
+          <Dashboard
+            metrics={dashboardMetrics}
+            visualization={visualization}
+            companyName={mode.companyName}
+            tagline={mode.tagline}
+            heroImage={mode.heroImage ? `http://localhost:8000${mode.heroImage}` : undefined}
+          />
+        )}
+        {activeTab === 'settings' && (
+          <SettingsPanel />
+        )}
+        {activeTab !== 'dashboard' && activeTab !== 'settings' && (
+          <div className="tab-content-container">
+            {tabLoading && !tabContentCache[activeTab] ? (
+              <div className="visualization-loading">
+                <div className="visualization-loading-spinner"></div>
+                <p>Generating content...</p>
+              </div>
+            ) : tabContentCache[activeTab] ? (
+              <div className="tab-content-visualization">
+                {tabContentCache[activeTab]}
+              </div>
+            ) : (
+              <div className="visualization-loading">
+                <p>Click to load content for this tab.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <nav className="bottom-tabs">
           {mode.tabs.map(tab => (
             <button
               key={tab.id}
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id, tab.label)}
             >
               <span className="tab-icon">{tab.icon}</span>
               <span className="tab-label">{tab.label}</span>

@@ -17,7 +17,7 @@ from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessa
 
 from auth import get_azure_credential, get_inference_client
 from tools import TOOL_DEFINITIONS, VOICE_TOOL_DEFINITIONS, execute_tool
-from modes import get_current_mode, set_current_mode
+from modes import get_current_mode, set_current_mode, get_voice_preference
 from chat import build_system_prompt, ensure_persona, detect_mode_switch, get_session_seed
 from persona import generate_persona
 
@@ -342,7 +342,7 @@ async def handle_voice_session(websocket: WebSocket) -> None:
             "type": "session.update",
             "session": {
                 "modalities": ["text", "audio"],
-                "voice": "verse",
+                "voice": get_voice_preference(),
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
                 "input_audio_transcription": {

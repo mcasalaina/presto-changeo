@@ -11,15 +11,21 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from azure.ai.inference.models import SystemMessage, UserMessage
 
 from auth import get_inference_client
-from chat import handle_chat_message, clear_history, ensure_persona, get_session_seed
+from chat import handle_chat_message, clear_history, ensure_persona, get_session_seed, build_system_prompt
 from voice import handle_voice_session
-from modes import get_current_mode
+from modes import (
+    get_current_mode, get_voice_preference, set_voice_preference,
+    AVAILABLE_VOICES,
+)
+from tools import TOOL_DEFINITIONS, execute_tool
 
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
+TAB_CONTENT_DEPLOYMENT = os.getenv("AZURE_TAB_CONTENT_DEPLOYMENT", "Kimi-K2.5")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -123,8 +129,76 @@ async def get_state():
             "hero_image": current_mode.hero_image,
             "chat_image": current_mode.chat_image,
         },
-        "persona": persona
+        "persona": persona,
+        "voice_preference": get_voice_preference(),
     }
+
+
+@app.get("/api/voice-preference")
+async def get_voice_pref():
+    """Get the current voice preference and available voices."""
+    return {"voice": get_voice_preference(), "available": AVAILABLE_VOICES}
+
+
+class VoicePreferenceRequest(BaseModel):
+    voice: str
+
+
+@app.post("/api/voice-preference")
+async def set_voice_pref(req: VoicePreferenceRequest):
+    """Set the voice preference."""
+    if set_voice_preference(req.voice):
+        return {"status": "ok", "voice": req.voice}
+    return {"status": "error", "message": f"Invalid voice. Choose from: {AVAILABLE_VOICES}"}
+
+
+class TabContentRequest(BaseModel):
+    tab_id: str
+    tab_label: str
+    mode_id: str
+
+
+@app.post("/api/tab-content")
+async def generate_tab_content(req: TabContentRequest):
+    """Generate contextual visualization content for a tab."""
+    from modes import get_mode
+    mode = get_mode(req.mode_id)
+    if not mode:
+        return {"error": f"Mode not found: {req.mode_id}"}
+
+    persona = ensure_persona(mode.id)
+    system_prompt = build_system_prompt(mode, persona)
+
+    client = get_inference_client()
+    messages = [
+        SystemMessage(content=system_prompt),
+        UserMessage(content=(
+            f"User navigated to the '{req.tab_label}' tab. "
+            f"Generate a relevant visualization using show_chart or show_metrics "
+            f"with realistic data for this section of a {mode.name} application."
+        )),
+    ]
+
+    import asyncio
+    response = await asyncio.to_thread(
+        client.complete,
+        model=TAB_CONTENT_DEPLOYMENT,
+        messages=messages,
+        tools=TOOL_DEFINITIONS,
+    )
+
+    tool_results = []
+    choice = response.choices[0]
+    if choice.message.tool_calls:
+        for tool_call in choice.message.tool_calls:
+            try:
+                arguments = json.loads(tool_call.function.arguments)
+                result = execute_tool(tool_call.function.name, arguments)
+                tool_results.append({"tool": tool_call.function.name, "result": result})
+            except json.JSONDecodeError as e:
+                logger.error(f"Tab content: failed to parse tool args: {e}")
+
+    return {"tool_results": tool_results}
 
 
 @app.websocket("/ws")
