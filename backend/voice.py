@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 AZURE_ENDPOINT = os.getenv("AZURE_PROJECT_ENDPOINT", "")
 REALTIME_DEPLOYMENT = os.getenv("AZURE_REALTIME_DEPLOYMENT", "gpt-realtime")
 MODEL_DEPLOYMENT = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
+VIZ_DEPLOYMENT = os.getenv("AZURE_VIZ_DEPLOYMENT", "") or os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini")
 REALTIME_API_VERSION = "2025-04-01-preview"
 
 MAX_TRANSCRIPT_HISTORY = 20
@@ -161,14 +162,14 @@ async def _generate_visualization_background(
         else:
             messages.append(UserMessage(content=f"Show me metrics: {description}. Use the show_metrics tool."))
 
-        logger.info(f"Background viz: calling Chat API with {len(messages)} messages for '{description}'")
+        logger.info(f"Background viz: calling Chat API ({VIZ_DEPLOYMENT}) with {len(messages)} messages for '{description}'")
 
         client = get_inference_client()
 
         # Run synchronous API call in thread to avoid blocking event loop
         response = await asyncio.to_thread(
             client.complete,
-            model=MODEL_DEPLOYMENT,
+            model=VIZ_DEPLOYMENT,
             messages=messages,
             tools=TOOL_DEFINITIONS,
         )
