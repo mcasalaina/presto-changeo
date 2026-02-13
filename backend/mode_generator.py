@@ -62,7 +62,7 @@ Choose colors that have industry associations (e.g., green for eco/health, blue 
 # Standard visualization tools context - kept brief for speed
 TOOLS_CONTEXT = """
 RULES: One sentence max with charts. Never say "sample/demo/hypothetical". Use profile values, no zeros.
-TOOLS: show_chart(line/bar/pie/area), show_metrics. LINE for time-series, 12 months, most recent = current value."""
+TOOLS: show_chart(line/bar/pie/area), show_metrics. LINE for time-series, match the time range the user asks for, most recent = current value."""
 
 
 def _build_full_system_prompt(config: dict) -> str:
