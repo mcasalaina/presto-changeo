@@ -510,16 +510,21 @@ function AppContent() {
         <div className="chat-input-area">
           <input
             type="text"
+            id="chat-message-input"
+            name="chat-message"
             className="chat-input"
-            placeholder={voiceEnabled ? "Voice mode active - speak or type..." : "Chat with me here..."}
+            placeholder="Chat with me here..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyPress}
             disabled={status !== 'connected'}
             autoComplete="off"
+            autoCorrect="off"
             data-lpignore="true"
             data-1p-ignore="true"
+            data-bwignore="true"
             data-form-type="other"
+            aria-label="Chat message"
           />
           <button
             className="send-button"
