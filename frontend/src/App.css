@@ -467,6 +467,15 @@ html, body, #root {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
+/* Semi-transparent backdrop behind charts when hero image is present */
+.visualization-container.has-hero-bg .chart-container {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
 .visualization-placeholder .company-logo {
   width: 100px;
   height: 100px;
